@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables
+.env
+
+# Database & Backups
+forexmon.db
+backups/
+
+# Logs
+logs/
+*.log
+
+# Machine Learning Models (ukuran besar/lokal)
+models/saved/
+
+# VSCode / IDE
+.vscode/
+.idea/
+.DS_Store

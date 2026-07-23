@@ -1,0 +1,38 @@
+# ── MT5 Connector ─────────────────────────────────
+MetaTrader5>=5.0.37
+
+# ── Data Processing ───────────────────────────────
+pandas>=2.0.0
+numpy>=1.24.0
+
+# ── Technical Indicators ──────────────────────────
+ta>=0.10.0
+
+# ── ML — Regime Detection ─────────────────────────
+hmmlearn>=0.3.0
+scikit-learn>=1.3.0
+
+# ── ML — Specialist Model ─────────────────────────
+xgboost>=1.7.0
+
+# ── Database (built-in sqlite3, no install needed) ─
+
+# ── Scheduling ────────────────────────────────────
+schedule>=1.2.0
+
+# ── Logging ───────────────────────────────────────
+loguru>=0.7.0
+
+# ── Config Management ─────────────────────────────
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# ── Notification ──────────────────────────────────
+python-telegram-bot>=20.0
+
+# ── Testing ───────────────────────────────────────
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# ── Visualization (untuk debugging & validasi) ─────
+matplotlib>=3.7.0
