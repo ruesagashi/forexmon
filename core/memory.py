@@ -237,37 +237,7 @@ class MemoryDB:
         conn.commit()
         return True
 
-    def update_specialist_metrics(self, specialist_id: str):
-        """
-        Hitung ulang winrate dan total_trades dari tabel trades,
-        lalu update ke tabel specialists.
-        Dipanggil setiap kali trade close.
-        """
-        conn = self._get_conn()
-        row = conn.execute("""
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN pnl > 0 THEN pnl ELSE 0 END) as gross_profit,
-                SUM(CASE WHEN pnl < 0 THEN ABS(pnl) ELSE 0 END) as gross_loss
-            FROM trades
-            WHERE specialist_id = ? AND result IS NOT NULL
-        """, (specialist_id,)).fetchone()
-        
-        total = row['total'] or 0
-        wins = row['wins'] or 0
-        gross_profit = row['gross_profit'] or 0
-        gross_loss = row['gross_loss'] or 1
-        
-        winrate = wins / total if total > 0 else 0.0
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0.0
-        
-        conn.execute("""
-            UPDATE specialists 
-            SET winrate = ?, profit_factor = ?, total_trades = ?
-            WHERE id = ?
-        """, (winrate, profit_factor, total, specialist_id))
-        conn.commit()
+
 
     # ─────────────────────────────────────────────────────────────────────────
     # TRADES CRUD
@@ -317,6 +287,35 @@ class MemoryDB:
                WHERE id = ?""",
             (exit_price, pnl, result, datetime.utcnow().isoformat(), trade_id),
         )
+        conn.commit()
+        return True
+
+    def update_specialist_metrics(self, specialist_id: str) -> bool:
+        """Hitung ulang dan update winrate + total_trades di tabel specialists."""
+        conn = self._get_conn()
+        row = conn.execute("""
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN result = 'WIN' THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN pnl > 0 THEN pnl ELSE 0 END) as gross_profit,
+                SUM(CASE WHEN pnl < 0 THEN ABS(pnl) ELSE 0 END) as gross_loss
+            FROM trades
+            WHERE specialist_id = ? AND result IS NOT NULL
+        """, (specialist_id,)).fetchone()
+
+        total = row['total'] or 0
+        wins = row['wins'] or 0
+        gross_profit = row['gross_profit'] or 0.0
+        gross_loss = row['gross_loss'] or 0.0
+
+        winrate = wins / total if total > 0 else 0.0
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0.0
+
+        conn.execute("""
+            UPDATE specialists 
+            SET winrate = ?, profit_factor = ?, total_trades = ?
+            WHERE id = ?
+        """, (winrate, profit_factor, total, specialist_id))
         conn.commit()
         return True
 
