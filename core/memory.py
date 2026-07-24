@@ -296,6 +296,12 @@ class MemoryDB:
             (specialist_id, limit)
         ).fetchall()
         return [dict(r) for r in rows]
+    def get_open_trades(self) -> list:
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT * FROM trades WHERE result IS NULL"
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_specialist_trades(self, specialist_id: str, last_n: int = None) -> list[dict]:
         """Ambil trade history specialist, opsional N trade terakhir."""

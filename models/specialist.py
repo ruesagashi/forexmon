@@ -194,11 +194,13 @@ class SpecialistTrainer:
                 if buy_result != 0 and sell_result != 0:
                     break
                     
-            if buy_result == 1 and sell_result != 1:
-                labels[i] = 1
-            elif sell_result == 1 and buy_result != 1:
-                labels[i] = 2
-            # else 0 (HOLD)
+            if buy_result == 1 and sell_result == 1:
+                labels[i] = 0  # Ambiguous — skip, jadikan HOLD
+            elif buy_result == 1:
+                labels[i] = 1  # BUY jelas
+            elif sell_result == 1:
+                labels[i] = 2  # SELL jelas
+            # else 0 (HOLD: keduanya kena SL atau timeout)
             
         return labels
 
@@ -216,8 +218,8 @@ class SpecialistTrainer:
         mask = df_labels == regime.name
         df_regime = df_historical[mask].copy()
         
-        if len(df_regime) < 500:
-            logger.warning(f"Data untuk {regime.name} terlalu sedikit ({len(df_regime)}). Butuh minimal 500.")
+        if len(df_regime) < 1000:
+            logger.warning(f"Data untuk {regime.name} terlalu sedikit ({len(df_regime)}). Butuh minimal 1000.")
             return None
             
         # Generate target labels berdasarkan rules TP/SL
@@ -246,7 +248,11 @@ class SpecialistTrainer:
         )
         
         logger.info(f"[SpecialistTrainer] Training model untuk {regime.name}...")
-        model.fit(X, y)
+        
+        from sklearn.utils.class_weight import compute_sample_weight
+        sample_weights = compute_sample_weight(class_weight='balanced', y=y)
+        
+        model.fit(X, y, sample_weight=sample_weights)
         
         # Evaluasi In-sample accuracy
         y_pred = model.predict(X)

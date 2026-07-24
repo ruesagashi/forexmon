@@ -7,6 +7,7 @@ Bertugas menarik data candle secara berkala dan men-trigger execution_engine.
 import time
 from datetime import datetime
 from loguru import logger
+import MetaTrader5 as mt5
 
 from execution.mt5_connector import connector
 from core.execution import execution_engine
@@ -56,8 +57,7 @@ class Scheduler:
         from core.pool_manager import pool_manager
         
         # Ambil semua trade yang masih "open" di database
-        conn = db._get_conn()
-        open_db_trades = conn.execute("SELECT * FROM trades WHERE result IS NULL").fetchall()
+        open_db_trades = db.get_open_trades()
         
         if not open_db_trades:
             return
@@ -71,7 +71,6 @@ class Scheduler:
                 # Trade sudah tertutup di MT5!
                 # TODO: Retrieve history deal to get exact PnL. For now, estimate based on SL/TP logic.
                 # In real scenario: use mt5.history_deals_get
-                import MetaTrader5 as mt5
                 history = mt5.history_deals_get(position=ticket)
                 if history:
                     deal = history[-1] # Usually the closing deal
