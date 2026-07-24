@@ -260,6 +260,20 @@ class MT5Connector:
     # ─────────────────────────────────────────────────────────────────────────
     # Order Execution
     # ─────────────────────────────────────────────────────────────────────────
+    
+    def _get_filling_mode(self, symbol: str) -> int:
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            return mt5.ORDER_FILLING_IOC
+        
+        # Cek supported filling modes dari broker
+        filling = info.filling_mode
+        if filling & mt5.SYMBOL_FILLING_FOK:
+            return mt5.ORDER_FILLING_FOK
+        elif filling & mt5.SYMBOL_FILLING_IOC:
+            return mt5.ORDER_FILLING_IOC
+        else:
+            return mt5.ORDER_FILLING_RETURN
 
     def send_order(
         self,
@@ -291,7 +305,7 @@ class MT5Connector:
             "magic": 1001,
             "comment": comment[:31],
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": self._get_filling_mode(symbol),
         }
 
         result = mt5.order_send(request)
@@ -336,7 +350,7 @@ class MT5Connector:
             "magic": 1001,
             "comment": "Close pos",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
+            "type_filling": self._get_filling_mode(symbol),
         }
 
         result = mt5.order_send(request)
