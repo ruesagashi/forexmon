@@ -156,13 +156,34 @@ body{background:var(--cream);font-family:'Share Tech Mono',monospace;color:var(-
 .status-ok{color:var(--green2)}
 .status-warn{color:var(--orange2);animation:blink 1s infinite}
 
-/* CONN STATUS */
 .conn-status{position:fixed;top:8px;right:8px;padding:3px 8px;font-size:9px;font-family:'Share Tech Mono',monospace;z-index:999}
 .conn-status.ok{background:var(--green2);color:#fff}
 .conn-status.err{background:var(--red2);color:#fff;animation:blink .5s infinite}
+
+/* POPUP ANIMATION */
+.pnl-popup{position:fixed;top:40%;left:50%;transform:translate(-50%, -50%);background:rgba(26,26,20,0.95);border:2px solid var(--border-col);padding:20px 40px;border-radius:4px;z-index:1000;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.3);opacity:0;pointer-events:none;transition:opacity 0.3s}
+.pnl-popup.show{opacity:1;animation:popInOut 4s forwards}
+.popup-label{font-size:10px;color:var(--gray);letter-spacing:3px;margin-bottom:5px;text-transform:uppercase}
+.popup-val{font-family:'VT323',monospace;font-size:72px;line-height:1;text-shadow:0 0 10px currentColor}
+.popup-sub{font-size:9px;color:var(--gray2);letter-spacing:1px;margin-top:5px}
+.popup-val.pos{color:#4aaa4a}
+.popup-val.neg{color:#cc3333}
+
+@keyframes popInOut{
+  0%{opacity:0;transform:translate(-50%,-40%) scale(0.9)}
+  10%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-60%) scale(0.9)}
+}
 </style>
 </head>
 <body>
+
+<div id="pnl-popup" class="pnl-popup">
+  <div class="popup-label">TRADE SETTLED</div>
+  <div class="popup-val" id="popup-val">+$0</div>
+  <div class="popup-sub">MT5 SYNC · LIVE UPDATE</div>
+</div>
 
 <div class="conn-status ok" id="conn-status">● API OK</div>
 
@@ -400,6 +421,7 @@ let equityChart = null;
 let uptimeSec = 0;
 let nextCandle = 300;
 let cycleCount = 0;
+let lastTotalTrades = -1; // To track new trades
 
 // ── INIT CHART ─────────────────────────────────────────────────────────────
 function initChart() {
@@ -470,6 +492,19 @@ async function fetchSummary() {
   if (!d) return;
 
   const pnl = d.total_pnl;
+
+  if (lastTotalTrades === -1 || d.total_trades > lastTotalTrades) {
+    if (lastTotalTrades !== -1) {
+      fetch('/api/recent_trades?limit=1').then(r => r.json()).then(res => {
+        if (res && res.length > 0) {
+          const t = res[0];
+          showPnlPopup(t.pnl, t.symbol);
+        }
+      });
+    }
+    lastTotalTrades = d.total_trades;
+  }
+
   const el = document.getElementById('pnl-display');
   el.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2});
   el.className = 'pnl-num ' + (pnl >= 0 ? 'pos' : 'neg');
@@ -677,6 +712,22 @@ function animatePipeline() {
       setTimeout(() => steps.forEach(el => el.className = 'pipe'), 2000);
     }
   }, 600);
+}
+
+// ── SHOW POPUP ─────────────────────────────────────────────────────────────
+function showPnlPopup(pnl, symbol) {
+  const popup = document.getElementById('pnl-popup');
+  const val = document.getElementById('popup-val');
+  const isPos = pnl >= 0;
+  
+  val.textContent = (isPos ? '+$' : '-$') + Math.abs(pnl).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2});
+  val.className = 'popup-val ' + (isPos ? 'pos' : 'neg');
+  popup.querySelector('.popup-label').textContent = symbol + ' SETTLED';
+  
+  // reset animation
+  popup.classList.remove('show');
+  void popup.offsetWidth; // trigger reflow
+  popup.classList.add('show');
 }
 
 // ── FETCH HELPER ───────────────────────────────────────────────────────────
