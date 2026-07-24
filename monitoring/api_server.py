@@ -83,6 +83,15 @@ def get_summary():
     """).fetchall()
     spec_map = {r['status']: r['cnt'] for r in spec_counts}
 
+    # Ambil balance dari MT5
+    try:
+        acc = connector.get_account_info()
+        balance = acc['balance'] if acc else 0.0
+        equity = acc['equity'] if acc else 0.0
+    except:
+        balance = 0.0
+        equity = 0.0
+
     return {
         "total_trades": total,
         "wins": wins,
@@ -99,6 +108,10 @@ def get_summary():
             "warning": spec_map.get("WARNING", 0),
             "suspended": spec_map.get("SUSPENDED", 0),
             "eliminated": spec_map.get("ELIMINATED", 0),
+        },
+        "account": {
+            "balance": balance,
+            "equity": equity
         }
     }
 

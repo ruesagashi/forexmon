@@ -184,6 +184,8 @@ body{background:var(--cream);font-family:'Share Tech Mono',monospace;color:var(-
         <div class="sys-metric">PROFIT FACTOR <span id="sys-pf" class="metric-green">--</span></div>
         <div class="sys-metric">DD TODAY <span id="sys-dd" class="metric-green">$0</span></div>
         <div class="sys-metric">FLOATING <span id="sys-live-pnl" class="metric-orange">$0</span></div>
+        <div class="sys-metric" style="border-color:#a8e6a8; background:#e8f5e8">BALANCE <span id="sys-balance" class="metric-green">$0</span></div>
+        <div class="sys-metric" style="border-color:#a8e6a8; background:#e8f5e8">GROWTH <span id="sys-growth" class="metric-green">0%</span></div>
       </div>
     </div>
     <div class="clock-block">
@@ -476,10 +478,19 @@ async function fetchSummary() {
   document.getElementById('ring-wr').textContent = wr;
   document.getElementById('sys-wr').textContent = wr + '%';
   document.getElementById('sys-pf').textContent = d.profit_factor;
+  document.getElementById('sys-pf').className = d.profit_factor >= 1 ? 'metric-green' : 'metric-red';
+  document.getElementById('sys-dd').textContent = (d.today_pnl >= 0 ? '+$' : '-$') + Math.abs(d.today_pnl).toFixed(2);
+  document.getElementById('sys-dd').className = d.today_pnl >= 0 ? 'metric-green' : 'metric-red';
 
-  const ddEl = document.getElementById('sys-dd');
-  ddEl.textContent = (d.today_pnl >= 0 ? '+$' : '-$') + Math.abs(d.today_pnl).toFixed(2);
-  ddEl.className = d.today_pnl >= 0 ? 'metric-green' : 'metric-red';
+  if (d.account) {
+    const bal = d.account.balance || 0;
+    const eq = d.account.equity || 0;
+    const growth = bal > 0 ? ((eq - bal) / bal * 100).toFixed(2) : '0.00';
+    
+    document.getElementById('sys-balance').textContent = '$' + bal.toFixed(2);
+    document.getElementById('sys-growth').textContent = (growth >= 0 ? '+' : '') + growth + '%';
+    document.getElementById('sys-growth').className = growth >= 0 ? 'metric-green' : 'metric-red';
+  }
 
   const avgTrade = d.total_trades > 0 ? (pnl / d.total_trades).toFixed(2) : '0.00';
   document.getElementById('pnl-detail').textContent =
