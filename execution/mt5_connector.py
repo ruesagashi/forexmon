@@ -267,10 +267,11 @@ class MT5Connector:
             return mt5.ORDER_FILLING_IOC
         
         # Cek supported filling modes dari broker
+        # 1 = FOK, 2 = IOC
         filling = info.filling_mode
-        if filling & mt5.SYMBOL_FILLING_FOK:
+        if filling & 1:
             return mt5.ORDER_FILLING_FOK
-        elif filling & mt5.SYMBOL_FILLING_IOC:
+        elif filling & 2:
             return mt5.ORDER_FILLING_IOC
         else:
             return mt5.ORDER_FILLING_RETURN

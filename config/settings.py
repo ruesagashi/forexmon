@@ -22,7 +22,7 @@ class TradingConfig(BaseSettings):
     MT5_SERVER: str = "YOUR_BROKER_SERVER"  # ← ISI dengan nama server broker
 
     # ── Symbol & Timeframe ────────────────────────────────────────────────────
-    SYMBOLS: List[str] = ["XAUUSD"]
+    SYMBOLS: List[str] = ["XAUUSD", "BTCUSD"]
     PRIMARY_TF: str = "M5"    # Untuk regime detection
     ENTRY_TF: str = "M5"     # Untuk entry timing
     HISTORY_CANDLES: int = 5000  # Minimal 5000 candle untuk training
@@ -71,7 +71,7 @@ class TradingConfig(BaseSettings):
 
     # ── Regime Detector ───────────────────────────────────────────────────────
     REGIME_CONFIDENCE_MIN: float = 0.60   # Di bawah ini = UNCERTAIN
-    REGIME_UPDATE_TF: str = "H1"          # Update regime tiap candle H1
+    REGIME_UPDATE_TF: str = "M15"          # Update regime tiap candle H1
     REGIME_HMM_STATES: int = 5            # 5 hidden states untuk HMM
     REGIME_FEATURE_VECTOR: List[str] = [
         "adx", "bb_width", "atr_ratio", "volume_ratio", "ema_slope"
@@ -90,7 +90,7 @@ class TradingConfig(BaseSettings):
 
     # ── Loss Streak & Cooldown ────────────────────────────────────────────────
     LOSS_STREAK_LIMIT: int = 3         # Loss beruntun sebelum cooldown
-    COOLDOWN_MINUTES: int = 60         # Cooldown setelah loss streak
+    COOLDOWN_MINUTES: int = 30         # Cooldown setelah loss streak
 
     # ── Database ──────────────────────────────────────────────────────────────
     DB_PATH: str = "forexmon.db"
