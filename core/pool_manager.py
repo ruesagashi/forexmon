@@ -112,13 +112,10 @@ class SpecialistPoolManager:
             return  # Tidak perlu evaluasi jika sudah mati/suspend
 
         # Ambil trade history
-        # Pindah raw SQL query ke memory.py sebagai method db.get_recent_trades()
-        rows = db.get_recent_trades(specialist_id, limit=20)
+        trades = db.get_recent_trades(specialist_id, limit=20)
         
-        if not rows:
+        if not trades:
             return
-            
-        trades = rows
         # Urutkan dari terlama ke terbaru dalam sample ini
         trades.reverse()
         
@@ -143,7 +140,7 @@ class SpecialistPoolManager:
         wr = wins / len(trades)
         
         # Trade ke-1 s/d 3: Loss semua 3 berturut-turut
-        if total_trades >= 3 and wins == 0:
+        if 3 <= total_trades < 5 and wins == 0:
             # Check if last 3 trades are losses
             last_3_wins = sum(1 for t in trades[-3:] if t["pnl"] > 0)
             if last_3_wins == 0:
@@ -154,19 +151,19 @@ class SpecialistPoolManager:
                 return
             
         # Trade ke-5: WR < 40%
-        if total_trades >= 5 and wr < 0.40:
+        if 5 <= total_trades < 10 and wr < 0.40:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 40% di trade 5.")
             return
             
         # Trade ke-10: WR < 50%
-        if total_trades >= 10 and wr < 0.50:
+        if 10 <= total_trades < 15 and wr < 0.50:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 50% di trade 10.")
             return
             
         # Trade ke-15: WR < 55%
-        if total_trades >= 15 and wr < 0.55:
+        if 15 <= total_trades < 20 and wr < 0.55:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 55% di trade 15.")
             return
