@@ -288,6 +288,15 @@ class MemoryDB:
         conn.commit()
         return True
 
+    def get_recent_trades(self, specialist_id: str, limit: int = 20) -> list[dict]:
+        """Ambil trade history terbaru dari specialist tertentu."""
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT * FROM trades WHERE specialist_id = ? ORDER BY close_at DESC LIMIT ?",
+            (specialist_id, limit)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_specialist_trades(self, specialist_id: str, last_n: int = None) -> list[dict]:
         """Ambil trade history specialist, opsional N trade terakhir."""
         conn = self._get_conn()

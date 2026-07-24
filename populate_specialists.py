@@ -42,6 +42,7 @@ def main():
     from models.specialist import SpecialistTrainer
     from core.pool_manager import pool_manager
     from models.regime_detector import Regime
+    from selection.eliminator import run_pre_filter
     import random
     
     # Kita akan train 3 spesialis per regime dengan subset fitur yang sedikit diacak
@@ -70,14 +71,15 @@ def main():
             try:
                 spec = trainer.train_specialist(regime, df_f, df_f["regime"])
                 if spec:
-                    # Fake metrics awal supaya UCB1 / FastKill tidak langsung membunuh
-                    spec.win_rate = 0.50
-                    spec.profit_factor = 1.0
-                    spec.trades_count = 0
-                    spec.status = "PROBATION"
+                    # Jalankan Pre-Filter Stage 1 (Backtest & Monte Carlo)
+                    is_passed, metrics = run_pre_filter(df_regime, spec)
                     
-                    pool_manager.add_specialist(spec)
-                    logger.success(f"Specialist {spec.id} ditambahkan ke Pool!")
+                    if is_passed:
+                        spec.status = "PROBATION"
+                        pool_manager.add_specialist(spec)
+                        logger.success(f"Specialist {spec.id} ditambahkan ke Pool!")
+                    else:
+                        logger.warning(f"Specialist {spec.id} gagal Pre-Filter (MC/Backtest).")
                 else:
                     logger.warning("Gagal train specialist (tidak ada edge).")
             except Exception as e:

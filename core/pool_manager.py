@@ -112,20 +112,13 @@ class SpecialistPoolManager:
             return  # Tidak perlu evaluasi jika sudah mati/suspend
 
         # Ambil trade history
-        # (Di sistem asli, kita memanggil get_trades_by_specialist. Di sini kita tambahkan method mock jika belum ada)
-        # Untuk implementasi, kita asumsikan db.get_recent_trades_by_specialist ada.
-        # Karena di db.py belum ada, kita baca langsung by manual DB query (atau anggap ada 20 last trades)
-        
-        conn = db._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM trades WHERE specialist_id = ? ORDER BY close_time DESC LIMIT 20",
-            (specialist_id,)
-        ).fetchall()
+        # Pindah raw SQL query ke memory.py sebagai method db.get_recent_trades()
+        rows = db.get_recent_trades(specialist_id, limit=20)
         
         if not rows:
             return
             
-        trades = [dict(r) for r in rows]
+        trades = rows
         # Urutkan dari terlama ke terbaru dalam sample ini
         trades.reverse()
         
@@ -150,25 +143,30 @@ class SpecialistPoolManager:
         wr = wins / len(trades)
         
         # Trade ke-1 s/d 3: Loss semua 3 berturut-turut
-        if total_trades == 3 and wins == 0:
-            db.update_specialist_status(specialist_id, "ELIMINATED")
-            logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: 3 loss beruntun awal.")
-            return
+        if total_trades >= 3 and wins == 0:
+            # Check if last 3 trades are losses
+            last_3_wins = sum(1 for t in trades[-3:] if t["pnl"] > 0)
+            if last_3_wins == 0:
+                db.update_specialist_status(specialist_id, "ELIMINATED")
+                logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: 3 loss beruntun awal.")
+                from monitoring.alerting import telegram_alerter
+                telegram_alerter.send_alert(f"💀 <b>SPECIALIST KILLED</b>\nID: {specialist_id}\nReason: 3 consecutive initial losses.")
+                return
             
         # Trade ke-5: WR < 40%
-        if total_trades == 5 and wr < 0.40:
+        if total_trades >= 5 and wr < 0.40:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 40% di trade 5.")
             return
             
         # Trade ke-10: WR < 50%
-        if total_trades == 10 and wr < 0.50:
+        if total_trades >= 10 and wr < 0.50:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 50% di trade 10.")
             return
             
         # Trade ke-15: WR < 55%
-        if total_trades == 15 and wr < 0.55:
+        if total_trades >= 15 and wr < 0.55:
             db.update_specialist_status(specialist_id, "ELIMINATED")
             logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 55% di trade 15.")
             return
@@ -196,6 +194,8 @@ class SpecialistPoolManager:
             if recent_wr < 0.60:
                 db.update_specialist_status(specialist_id, "SUSPENDED")
                 logger.error(f"[PoolManager] {specialist_id} SUSPENDED: Recent WR drop ke {recent_wr:.1%}")
+                from monitoring.alerting import telegram_alerter
+                telegram_alerter.send_alert(f"⚠️ <b>SPECIALIST SUSPENDED</b>\nID: {specialist_id}\nReason: WR drops below 60% ({recent_wr:.1%})")
             elif recent_wr < 0.70:
                 db.update_specialist_status(specialist_id, "WARNING")
                 logger.warning(f"[PoolManager] {specialist_id} WARNING: Recent WR drop ke {recent_wr:.1%}")

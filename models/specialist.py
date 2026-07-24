@@ -78,11 +78,15 @@ class Specialist:
             
         return signal, confidence
 
-    def update_metrics(self, win_rate: float, profit_factor: float, trades_count: int):
+    def update_metrics(self, win_rate: float, profit_factor: float, trades_count: int, recent_wr: float = None):
         self.win_rate = win_rate
         self.profit_factor = profit_factor
         self.trades_count = trades_count
-        self.composite_score = (win_rate * 0.6) + (min(profit_factor, 3.0)/3.0 * 0.4)
+        if recent_wr is None:
+            recent_wr = win_rate
+        
+        # PRD: Score = (WR * 0.4) + (Normalized_PF * 0.3) + (Recent_WR * 0.3)
+        self.composite_score = (win_rate * 0.4) + (min(profit_factor, 3.0)/3.0 * 0.3) + (recent_wr * 0.3)
 
     def save(self) -> str:
         filepath = SPECIALIST_DIR / f"spec_{self.regime.value}_{self.id}.pkl"
@@ -171,14 +175,18 @@ class SpecialistTrainer:
                 
                 # Check BUY
                 if buy_result == 0:
-                    if curr_l <= buy_sl:
+                    if curr_l <= buy_sl and curr_h >= buy_tp:
+                        buy_result = -1  # Konservatif: anggap kena SL kalau 1 candle tembus SL & TP
+                    elif curr_l <= buy_sl:
                         buy_result = -1
                     elif curr_h >= buy_tp:
                         buy_result = 1
                 
                 # Check SELL
                 if sell_result == 0:
-                    if curr_h >= sell_sl:
+                    if curr_h >= sell_sl and curr_l <= sell_tp:
+                        sell_result = -1  # Konservatif
+                    elif curr_h >= sell_sl:
                         sell_result = -1
                     elif curr_l <= sell_tp:
                         sell_result = 1

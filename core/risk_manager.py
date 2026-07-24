@@ -32,7 +32,7 @@ class RiskManager:
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         conn = db._get_conn()
         rows = conn.execute(
-            "SELECT pnl FROM trades WHERE close_time >= ?", (today_start,)
+            "SELECT pnl FROM trades WHERE close_at >= ?", (today_start,)
         ).fetchall()
         
         daily_pnl = sum(r["pnl"] for r in rows if r["pnl"] is not None)

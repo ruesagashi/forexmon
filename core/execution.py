@@ -19,17 +19,15 @@ from config.settings import settings
 
 
 class ExecutionEngine:
-    def __init__(self, symbol: str = "XAUUSD", timeframe: str = "H1"):
-        self.symbol = symbol
-        self.timeframe = timeframe
+    def __init__(self):
         self.master_brain = MasterBrain()
 
-    def run_cycle(self, df: pd.DataFrame):
+    def run_cycle(self, symbol: str, timeframe: str, df: pd.DataFrame):
         """
         Jalankan satu siklus eksekusi.
         Dipanggil setiap kali ada bar/candle baru.
         """
-        logger.info(f"--- Memulai Execution Cycle untuk {self.symbol} ---")
+        logger.info(f"--- Memulai Execution Cycle untuk {symbol} ---")
 
         # 1. Cek koneksi MT5
         if not connector.ensure_connected():
@@ -41,15 +39,16 @@ class ExecutionEngine:
             logger.warning("[Execution] Trading dihentikan oleh Risk Manager (Drawdown/Cooldown).")
             return
 
-        # 3. Master Brain: Deteksi Regime
-        regime_status = self.master_brain.get_status(df)
-        if not regime_status:
+        # 2.5 Cek posisi terbuka untuk symbol ini
+        open_positions = connector.get_open_positions(symbol=symbol)
+        if len(open_positions) > 0:
+            logger.info(f"[Execution] Masih ada {len(open_positions)} posisi terbuka untuk {symbol}. Menunggu close sebelum entry baru.")
             return
-            
-        regime = regime_status.get("regime")
-        action = regime_status.get("action")
+
+        # 3. Master Brain: Deteksi Regime
+        regime, confidence = self.master_brain.detect_regime(df=df)
         
-        if action == "HOLD":
+        if self.master_brain.is_hold_mode:
             logger.info("[Execution] Master Brain menginstruksikan HOLD (Regime UNCERTAIN).")
             return
 
@@ -74,9 +73,9 @@ class ExecutionEngine:
             return
 
         # 7. Eksekusi Order
-        self._execute_trade(specialist, signal, df.iloc[-1])
+        self._execute_trade(symbol, timeframe, specialist, signal, df.iloc[-1])
 
-    def _execute_trade(self, specialist, signal: int, current_bar: pd.Series):
+    def _execute_trade(self, symbol: str, timeframe: str, specialist, signal: int, current_bar: pd.Series):
         """Kalkulasi risk dan kirim order ke MT5."""
         
         direction = "BUY" if signal == 1 else "SELL"
@@ -85,7 +84,7 @@ class ExecutionEngine:
         sl_dist_points = atr * settings.SL_ATR_MULT
         tp_dist_points = atr * settings.TP_ATR_MULT
         
-        tick = connector.get_symbol_info(self.symbol)
+        tick = connector.get_symbol_info(symbol)
         if not tick:
             return
             
@@ -112,7 +111,7 @@ class ExecutionEngine:
         logger.info(f"[Execution] Eksekusi {direction} {lot_size} lot di {price:.2f} (SL: {sl:.2f}, TP: {tp:.2f}) by {specialist.id}")
         
         result = connector.send_order(
-            symbol=self.symbol,
+            symbol=symbol,
             order_type=direction,
             volume=lot_size,
             price=price,
@@ -122,8 +121,24 @@ class ExecutionEngine:
         )
         
         if result:
-            # Sukses
-            # Di real system, kita harus simpan order ini ke DB memory
-            pass
+            logger.success(f"[Execution] Order berhasil! Ticket: {result['ticket']}")
+            from core.memory import db
+            db.add_trade(
+                specialist_id=specialist.id,
+                symbol=symbol,
+                direction=direction,
+                entry_price=price,
+                sl=sl,
+                tp=tp,
+                lot_size=lot_size,
+                regime_at_entry=specialist.regime.value,
+                confidence=0.0,
+                ticket=result["ticket"]
+            )
+            
+            from monitoring.alerting import telegram_alerter
+            msg = f"🟢 <b>NEW TRADE</b>\nSym: {symbol}\nDir: {direction}\nLot: {lot_size}\nPrice: {price:.2f}\nSpec: {specialist.id}\nRegime: {specialist.regime.value}"
+            telegram_alerter.send_alert(msg)
+            # Slot otomatis terpakai karena posisi terbuka bertambah (MT5 API sync)
 
 execution_engine = ExecutionEngine()
