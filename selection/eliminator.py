@@ -9,6 +9,21 @@ class BacktestEngine:
     """
     Simulates trading over historical data to evaluate a Specialist.
     """
+    
+    @staticmethod
+    def calculate_max_drawdown(trades: list) -> float:
+        cumulative = 0.0
+        peak = 0.0
+        max_dd = 0.0
+        for t in trades:
+            cumulative += t["pnl"]
+            if cumulative > peak:
+                peak = cumulative
+            dd = (peak - cumulative) / peak if peak > 0 else 0.0
+            if dd > max_dd:
+                max_dd = dd
+        return max_dd
+
     def __init__(self, df: pd.DataFrame, specialist: Specialist):
         self.df = df
         self.specialist = specialist
@@ -106,6 +121,7 @@ class BacktestEngine:
             "total_trades": total_trades,
             "winrate": winrate,
             "profit_factor": profit_factor,
+            "max_drawdown": self.calculate_max_drawdown(self.trades),
             "trades": self.trades
         }
 
@@ -136,22 +152,31 @@ class MonteCarloSimulator:
                 
         return profitable_runs / self.num_simulations
 
-def run_pre_filter(df: pd.DataFrame, specialist: Specialist) -> Tuple[bool, dict]:
+def run_pre_filter(df: pd.DataFrame, specialist: Specialist, regime_confidence: float = 1.0) -> Tuple[bool, dict]:
     """
     Menjalankan Stage 1 Pre-Filter (Backtest & Monte Carlo).
     Mengembalikan (is_passed, metrics)
     """
-    logger.info(f"[Pre-Filter] Memulai evaluasi untuk model {specialist.regime.value}")
+    logger.info(f"[Pre-Filter] Memulai evaluasi untuk model {specialist.regime.value} (Confidence: {regime_confidence:.2f})")
+    
+    if regime_confidence < 0.70:
+        logger.warning(f"[Pre-Filter] GAGAL: Regime confidence {regime_confidence:.2f} < 0.70")
+        return False, {"reason": "Low regime confidence"}
+        
     engine = BacktestEngine(df, specialist)
     results = engine.run()
     
     total_trades = results["total_trades"]
-    if total_trades < 30:
+    if total_trades < 100:
         logger.warning(f"[Pre-Filter] GAGAL: Trade terlalu sedikit ({total_trades})")
         return False, results
         
-    if results["winrate"] < 0.55 or results["profit_factor"] < 1.2:
+    if results["winrate"] < 0.60 or results["profit_factor"] < 1.50:
         logger.warning(f"[Pre-Filter] GAGAL: WR={results['winrate']:.2f}, PF={results['profit_factor']:.2f}")
+        return False, results
+        
+    if results["max_drawdown"] > 0.15:
+        logger.warning(f"[Pre-Filter] GAGAL: Max Drawdown {results['max_drawdown']:.1%} > 15%")
         return False, results
         
     mc = MonteCarloSimulator(results["trades"], num_simulations=1000)
