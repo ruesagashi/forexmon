@@ -101,7 +101,7 @@ class ExecutionEngine:
             tp = price - tp_dist_points
             
         # Hitung Lot Size dari Risk Manager
-        lot_size = risk_manager.calculate_lot_size(sl_dist_points)
+        lot_size = risk_manager.calculate_lot_size(symbol, sl_dist_points)
         if lot_size <= 0:
             logger.warning("[Execution] Lot size 0, order dibatalkan.")
             return

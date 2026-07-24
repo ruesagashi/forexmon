@@ -53,7 +53,7 @@ class RiskManager:
             
         return True
 
-    def calculate_lot_size(self, sl_distance_points: float) -> float:
+    def calculate_lot_size(self, symbol: str, sl_distance_points: float) -> float:
         """
         Hitung ukuran lot berdasarkan Risk % dan jarak SL.
         Asumsi XAUUSD standard contract size = 100
@@ -63,7 +63,7 @@ class RiskManager:
             return 0.01  # fallback min lot
             
         account = connector.get_account_info()
-        symbol_info = connector.get_symbol_info("XAUUSD")
+        symbol_info = connector.get_symbol_info(symbol)
         
         if not account or not symbol_info:
             return 0.01
