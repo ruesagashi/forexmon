@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOREXMON · LIVE DASHBOARD</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#f0ede4;--dark:#1a1a14;--border-col:#c8c4b0;
+  --green:#2d7a2d;--green2:#4aaa4a;--green3:#a8e6a8;
+  --orange:#c97820;--orange2:#e8a030;
+  --red:#9a2020;--red2:#cc3333;
+  --gray:#888880;--gray2:#ccc8bc;
+  --bg-panel:#ebe8de;
+}
+body{background:var(--cream);font-family:'Share Tech Mono',monospace;color:var(--dark);font-size:11px;min-height:100vh;padding:10px}
+.db{max-width:900px;margin:0 auto;border:1px solid var(--border-col);background:var(--cream);padding:10px}
+
+/* TOPBAR */
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--dark);padding-bottom:8px;margin-bottom:10px}
+.topbar-left{display:flex;flex-direction:column;gap:3px}
+.badges{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.badge{background:var(--dark);color:var(--cream);padding:2px 7px;font-size:9px;font-family:'Share Tech Mono',monospace;letter-spacing:1px}
+.badge.live{background:var(--green2);color:#fff;animation:blink 1.2s infinite}
+.badge.demo{background:var(--orange);color:#fff}
+.badge.warn{background:var(--red2);color:#fff}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.sys-title{font-size:16px;font-weight:bold;letter-spacing:2px;color:var(--dark)}
+.sys-sub{font-size:9px;color:var(--gray);letter-spacing:3px}
+.clock-block{text-align:right}
+.clock-time{font-family:'VT323',monospace;font-size:36px;line-height:1;color:var(--dark)}
+.clock-date{font-size:9px;color:var(--gray);margin-bottom:3px}
+.sys-metrics{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.sys-metric{background:var(--bg-panel);border:1px solid var(--border-col);padding:2px 7px;font-size:9px}
+.sys-metric span{font-size:12px;font-weight:bold}
+.metric-green{color:var(--green2)}
+.metric-orange{color:var(--orange2)}
+.metric-red{color:var(--red2)}
+
+/* PNL ROW */
+.pnl-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px}
+.pnl-main{flex:1}
+.pnl-label{font-size:9px;color:var(--gray);letter-spacing:2px;margin-bottom:2px}
+.pnl-num{font-family:'VT323',monospace;font-size:58px;line-height:1;letter-spacing:3px;transition:color .3s}
+.pnl-num.pos{color:var(--green2)}
+.pnl-num.neg{color:var(--red2)}
+.pnl-detail{font-size:9px;color:var(--gray);margin-top:3px;letter-spacing:1px}
+.pnl-detail strong{color:var(--dark)}
+.win-ring-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.win-ring{position:relative;width:88px;height:88px}
+.win-ring svg{width:88px;height:88px}
+.ring-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-num{font-family:'VT323',monospace;font-size:32px;line-height:1;color:var(--dark)}
+.ring-label{font-size:7px;color:var(--gray);letter-spacing:1px}
+.streak-badge{background:var(--bg-panel);border:1px solid var(--border-col);padding:3px 8px;font-size:10px;text-align:center}
+.streak-val{font-size:16px;font-family:'VT323',monospace;color:var(--green2)}
+
+/* STATS BAR */
+.stats-bar{display:flex;gap:0;border-top:1px solid var(--border-col);border-bottom:1px solid var(--border-col);margin-bottom:10px}
+.stat-item{flex:1;padding:5px 8px;border-right:1px solid var(--border-col);text-align:center}
+.stat-item:last-child{border-right:none}
+.stat-label{font-size:8px;color:var(--gray);letter-spacing:1px;display:block}
+.stat-val{font-size:14px;font-family:'VT323',monospace;display:block;color:var(--dark)}
+.stat-val.green{color:var(--green2)}
+.stat-val.orange{color:var(--orange2)}
+.stat-val.red{color:var(--red2)}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.panel{border:1px solid var(--border-col);background:var(--bg-panel);padding:7px}
+.panel-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;border-bottom:1px solid var(--border-col);padding-bottom:4px}
+.panel-title{font-size:9px;letter-spacing:2px;color:var(--gray)}
+.panel-badge{font-size:7px;background:var(--dark);color:var(--cream);padding:1px 5px}
+
+/* SPECIALIST LIST */
+.spec-row{display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:10px}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sdot.approved{background:var(--green2)}
+.sdot.probation{background:var(--orange2)}
+.sdot.warning{background:var(--red2);animation:blink 1s infinite}
+.sdot.suspended{background:var(--red)}
+.spec-id{width:55px;flex-shrink:0;letter-spacing:.5px;font-size:9px}
+.spec-regime{width:62px;flex-shrink:0;font-size:8px;color:var(--gray)}
+.spec-bar-bg{flex:1;background:var(--gray2);height:3px}
+.spec-bar-fill{height:3px;transition:width .5s}
+.spec-bar-fill.green{background:var(--green2)}
+.spec-bar-fill.orange{background:var(--orange2)}
+.spec-bar-fill.red{background:var(--red2)}
+.spec-wr{width:35px;text-align:right;font-size:10px}
+.spec-trades{width:28px;text-align:right;font-size:8px;color:var(--gray)}
+
+/* CHART */
+.chart-container{position:relative;height:120px}
+
+/* REGIME */
+.regime-section{margin-bottom:10px}
+.regime-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.regime-box{border:1px solid var(--border-col);padding:5px;text-align:center;background:var(--bg-panel)}
+.regime-box.active{border-color:var(--orange2);border-width:2px;background:#fdf8ee}
+.regime-name{font-size:8px;letter-spacing:1px;color:var(--gray);margin-bottom:2px}
+.regime-conf{font-family:'VT323',monospace;font-size:22px;line-height:1;color:var(--dark)}
+.regime-box.active .regime-name{color:var(--orange)}
+.regime-box.active .regime-conf{color:var(--orange2)}
+.regime-bar{height:3px;background:var(--gray2);margin-top:3px}
+.regime-bar-fill{height:3px;background:var(--green2);transition:width .5s}
+.regime-box.active .regime-bar-fill{background:var(--orange2)}
+
+/* PIPELINE */
+.pipeline-wrap{margin-bottom:10px}
+.pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.pipe{border:1px solid var(--border-col);padding:5px 5px;background:var(--bg-panel)}
+.pipe.done{border-color:var(--green)}
+.pipe.active{border-color:var(--orange2);background:#fdf8ee}
+.pipe-n{font-size:8px;color:var(--gray)}
+.pipe-name{font-size:9px;font-weight:bold;color:var(--dark);margin:2px 0 1px}
+.pipe-val{font-size:8px;color:var(--green2)}
+.pipe.active .pipe-val{color:var(--orange2)}
+.pipe-ms{font-size:7px;color:var(--gray)}
+
+/* TRADE FEED */
+.trade-feed{margin-bottom:10px;border:1px solid var(--border-col)}
+.trade-hdr{display:flex;justify-content:space-between;padding:5px 7px;background:var(--bg-panel);border-bottom:1px solid var(--border-col)}
+.trade-row{display:flex;justify-content:space-between;align-items:center;padding:4px 7px;border-bottom:1px solid #e4e0d4;font-size:10px}
+.trade-row:last-child{border-bottom:none}
+.trade-row:hover{background:#ebe8de}
+.trade-row.win-row{border-left:2px solid var(--green2)}
+.trade-row.loss-row{border-left:2px solid var(--red2)}
+.trade-spec{color:var(--gray);font-size:9px;width:60px}
+.trade-sym{width:55px}
+.trade-dir{width:35px;font-size:9px}
+.trade-regime{color:var(--gray);font-size:9px;flex:1;text-align:center}
+.trade-pnl{width:70px;text-align:right;font-weight:bold}
+.trade-time{color:var(--gray);font-size:8px;width:50px;text-align:right}
+.win-txt{color:var(--green2)}
+.loss-txt{color:var(--red2)}
+
+/* FAST-KILL LOG */
+.fk-section{margin-bottom:10px;border:1px solid var(--border-col)}
+.fk-hdr{display:flex;justify-content:space-between;padding:5px 7px;background:var(--bg-panel);border-bottom:1px solid var(--border-col)}
+.fk-row{display:flex;gap:8px;padding:3px 7px;border-bottom:1px solid #e4e0d4;font-size:9px}
+.fk-row:last-child{border-bottom:none}
+.fk-badge{padding:1px 5px;font-size:8px;flex-shrink:0}
+.fk-badge.eliminated{background:var(--red);color:#fff}
+.fk-badge.approved{background:var(--green);color:#fff}
+.fk-badge.warning{background:var(--orange);color:#fff}
+.fk-badge.suspended{background:var(--red2);color:#fff}
+.fk-desc{flex:1;color:var(--dark)}
+.fk-time{color:var(--gray);font-size:8px;flex-shrink:0}
+
+/* BOTTOM BAR */
+.bottombar{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-col);padding-top:6px;font-size:9px;color:var(--gray);flex-wrap:wrap;gap:4px}
+.bottombar strong{color:var(--dark)}
+.status-ok{color:var(--green2)}
+.status-warn{color:var(--orange2);animation:blink 1s infinite}
+
+/* CONN STATUS */
+.conn-status{position:fixed;top:8px;right:8px;padding:3px 8px;font-size:9px;font-family:'Share Tech Mono',monospace;z-index:999}
+.conn-status.ok{background:var(--green2);color:#fff}
+.conn-status.err{background:var(--red2);color:#fff;animation:blink .5s infinite}
+</style>
+</head>
+<body>
+
+<div class="conn-status ok" id="conn-status">● API OK</div>
+
+<div class="db">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="badges">
+        <span class="badge live">● LIVE</span>
+        <span class="badge demo" id="mode-badge">DEMO</span>
+        <span class="badge" id="symbol-badge">XAUUSD · M5</span>
+        <span class="badge" id="uptime-badge">UP 00:00:00</span>
+      </div>
+      <div class="sys-title">FOREXMON · ADAPTIVE TRADING SYSTEM</div>
+      <div class="sys-sub">MASTER BRAIN · SPECIALIST POOL · FAST-KILL PROTOCOL</div>
+      <div class="sys-metrics" style="margin-top:4px">
+        <div class="sys-metric">SYS WR <span id="sys-wr" class="metric-green">--%</span></div>
+        <div class="sys-metric">PROFIT FACTOR <span id="sys-pf" class="metric-green">--</span></div>
+        <div class="sys-metric">DD TODAY <span id="sys-dd" class="metric-green">$0</span></div>
+        <div class="sys-metric">FLOATING <span id="sys-live-pnl" class="metric-orange">$0</span></div>
+      </div>
+    </div>
+    <div class="clock-block">
+      <div class="clock-date" id="clk-date">--- UTC</div>
+      <div class="clock-time" id="clk">--:--:--</div>
+      <div style="font-size:9px;color:var(--gray);text-align:right;margin-top:3px">NEXT M5 CANDLE: <strong id="next-candle" style="color:var(--orange2)">--:--</strong></div>
+    </div>
+  </div>
+
+  <!-- PNL ROW -->
+  <div class="pnl-row">
+    <div class="pnl-main">
+      <div class="pnl-label">SESSION · REALIZED PNL</div>
+      <div class="pnl-num pos" id="pnl-display">+$0</div>
+      <div class="pnl-detail" id="pnl-detail">-- trades · --% win rate · --/trade avg</div>
+    </div>
+    <div class="win-ring-wrap">
+      <div class="win-ring">
+        <svg viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r="36" fill="none" stroke="#d8d4c8" stroke-width="6"/>
+          <circle id="ring-arc" cx="44" cy="44" r="36" fill="none" stroke="#4aaa4a" stroke-width="6"
+            stroke-dasharray="226" stroke-dashoffset="226" stroke-linecap="round"
+            transform="rotate(-90 44 44)" style="transition:stroke-dashoffset .6s,stroke .3s"/>
+        </svg>
+        <div class="ring-inner">
+          <div class="ring-num" id="ring-wr">0</div>
+          <div class="ring-label">WIN %</div>
+        </div>
+      </div>
+      <div class="streak-badge">
+        WIN STREAK <span class="streak-val" id="streak-val">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">TOTAL TRADES</span>
+      <span class="stat-val" id="stat-trades">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">APPROVED</span>
+      <span class="stat-val green" id="stat-approved">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">PROBATION</span>
+      <span class="stat-val orange" id="stat-probation">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">ELIMINATED</span>
+      <span class="stat-val red" id="stat-eliminated">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">OPEN TRADES</span>
+      <span class="stat-val" id="stat-open">0</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">WARNING</span>
+      <span class="stat-val orange" id="stat-warning">0</span>
+    </div>
+  </div>
+
+  <!-- SPECIALIST + EQUITY GRID -->
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">SPECIALIST POOL</span>
+        <span class="panel-badge">UCB1 RANKED</span>
+      </div>
+      <div id="spec-list"><div style="color:var(--gray);font-size:9px;text-align:center;padding:20px">Loading specialists...</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">EQUITY CURVE</span>
+        <span class="panel-badge" id="equity-label">SESSION</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="equity-chart" role="img" aria-label="Equity curve showing cumulative PnL over session">Equity curve data loading...</canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGIME DETECTOR -->
+  <div class="regime-section">
+    <div class="panel-hdr" style="margin-bottom:6px">
+      <span class="panel-title">MASTER BRAIN · REGIME DETECTOR</span>
+      <span class="badge live" style="font-size:8px">● LIVE</span>
+    </div>
+    <div class="regime-grid" id="regime-grid">
+      <div class="regime-box" data-regime="TRENDING_UP">
+        <div class="regime-name">TRENDING ↑</div>
+        <div class="regime-conf">--%</div>
+        <div class="regime-bar"><div class="regime-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="regime-box" data-regime="TRENDING_DOWN">
+        <div class="regime-name">TRENDING ↓</div>
+        <div class="regime-conf">--%</div>
+        <div class="regime-bar"><div class="regime-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="regime-box" data-regime="RANGING">
+        <div class="regime-name">RANGING</div>
+        <div class="regime-conf">--%</div>
+        <div class="regime-bar"><div class="regime-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="regime-box" data-regime="BREAKOUT">
+        <div class="regime-name">BREAKOUT</div>
+        <div class="regime-conf">--%</div>
+        <div class="regime-bar"><div class="regime-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="regime-box" data-regime="REVERSAL">
+        <div class="regime-name">REVERSAL</div>
+        <div class="regime-conf">--%</div>
+        <div class="regime-bar"><div class="regime-bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline-wrap">
+    <div class="panel-hdr" style="margin-bottom:6px">
+      <span class="panel-title">EXECUTION PIPELINE</span>
+      <span id="pipeline-cycle" style="font-size:9px;color:var(--gray)">CYCLE #--</span>
+    </div>
+    <div class="pipeline">
+      <div class="pipe done">
+        <div class="pipe-n">01</div>
+        <div class="pipe-name">SCAN</div>
+        <div class="pipe-val" id="pipe-symbol">XAUUSD M5</div>
+        <div class="pipe-ms" id="pipe-1-ms">--ms</div>
+      </div>
+      <div class="pipe done">
+        <div class="pipe-n">02</div>
+        <div class="pipe-name">REGIME</div>
+        <div class="pipe-val" id="pipe-regime">--</div>
+        <div class="pipe-ms" id="pipe-2-ms">--ms</div>
+      </div>
+      <div class="pipe done">
+        <div class="pipe-n">03</div>
+        <div class="pipe-name">SPECIALIST</div>
+        <div class="pipe-val" id="pipe-spec">--</div>
+        <div class="pipe-ms" id="pipe-3-ms">--ms</div>
+      </div>
+      <div class="pipe active">
+        <div class="pipe-n">04</div>
+        <div class="pipe-name">PREDICT</div>
+        <div class="pipe-val" id="pipe-signal">--</div>
+        <div class="pipe-ms" id="pipe-4-ms">--ms</div>
+      </div>
+      <div class="pipe">
+        <div class="pipe-n">05</div>
+        <div class="pipe-name">RISK</div>
+        <div class="pipe-val" id="pipe-lot">-- LOT</div>
+        <div class="pipe-ms" id="pipe-5-ms">--ms</div>
+      </div>
+      <div class="pipe">
+        <div class="pipe-n">06</div>
+        <div class="pipe-name">EXECUTE</div>
+        <div class="pipe-val" id="pipe-result">WAITING</div>
+        <div class="pipe-ms">--ms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE POSITIONS -->
+  <div class="trade-feed" style="margin-bottom:10px; border-color:var(--orange2)">
+    <div class="trade-hdr" style="background:#fdf8ee; border-bottom-color:var(--orange2)">
+      <span class="panel-title" style="color:var(--orange)">LIVE POSITIONS</span>
+      <span class="panel-badge" style="background:var(--orange2)">MT5 SYNC</span>
+    </div>
+    <div id="live-list">
+      <div style="text-align:center;padding:15px;color:var(--gray);font-size:9px">Waiting for live positions...</div>
+    </div>
+  </div>
+
+  <!-- RECENT TRADES -->
+  <div class="trade-feed">
+    <div class="trade-hdr">
+      <span class="panel-title">RECENT TRADES</span>
+      <span class="panel-badge">LIVE FEED</span>
+    </div>
+    <div id="trade-list">
+      <div style="text-align:center;padding:15px;color:var(--gray);font-size:9px">Waiting for trades...</div>
+    </div>
+  </div>
+
+  <!-- FAST-KILL LOG -->
+  <div class="fk-section">
+    <div class="fk-hdr">
+      <span class="panel-title">FAST-KILL · SELECTION LOG</span>
+      <span class="panel-badge">AUTO MONITOR</span>
+    </div>
+    <div id="fk-list">
+      <div style="text-align:center;padding:10px;color:var(--gray);font-size:9px">No events yet...</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <div>DB <strong id="db-path">forexmon.db</strong></div>
+    <div>SLOTS <strong id="slot-used">0</strong>/30 APPROVED · <strong id="prob-slots">0</strong>/15 PROBATION</div>
+    <div>REFRESH <strong>5s</strong></div>
+    <div>API <strong id="api-url">localhost:8765</strong></div>
+    <div id="last-update" style="color:var(--gray)">Last update: --</div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8765/api';
+let equityChart = null;
+let uptimeSec = 0;
+let nextCandle = 300;
+let cycleCount = 0;
+
+// ── INIT CHART ─────────────────────────────────────────────────────────────
+function initChart() {
+  const ctx = document.getElementById('equity-chart').getContext('2d');
+  equityChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: '#4aaa4a',
+        borderWidth: 1.5,
+        fill: true,
+        backgroundColor: 'rgba(74,170,74,0.07)',
+        tension: 0.4,
+        pointRadius: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: {
+          display: true,
+          position: 'right',
+          grid: { color: '#e4e0d4', lineWidth: 0.5 },
+          ticks: {
+            font: { family: 'Share Tech Mono', size: 8 },
+            color: '#888880',
+            callback: v => '$' + v.toFixed(0)
+          }
+        }
+      },
+      animation: { duration: 400 }
+    }
+  });
+}
+
+// ── CLOCK ──────────────────────────────────────────────────────────────────
+function updateClock() {
+  const n = new Date();
+  const pad = x => x.toString().padStart(2, '0');
+  document.getElementById('clk').textContent =
+    pad(n.getUTCHours()) + ':' + pad(n.getUTCMinutes()) + ':' + pad(n.getUTCSeconds());
+  document.getElementById('clk-date').textContent =
+    n.toUTCString().slice(0, 16) + ' UTC';
+
+  uptimeSec++;
+  const h = Math.floor(uptimeSec / 3600);
+  const m = Math.floor((uptimeSec % 3600) / 60);
+  const s = uptimeSec % 60;
+  document.getElementById('uptime-badge').textContent =
+    'UP ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+
+  nextCandle--;
+  if (nextCandle < 0) nextCandle = 299;
+  const nm = Math.floor(nextCandle / 60);
+  const ns = nextCandle % 60;
+  document.getElementById('next-candle').textContent =
+    nm + ':' + pad(ns);
+}
+
+// ── FETCH SUMMARY ──────────────────────────────────────────────────────────
+async function fetchSummary() {
+  const d = await fetchJson('/summary');
+  if (!d) return;
+
+  const pnl = d.total_pnl;
+  const el = document.getElementById('pnl-display');
+  el.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2});
+  el.className = 'pnl-num ' + (pnl >= 0 ? 'pos' : 'neg');
+
+  const wr = d.win_rate;
+  document.getElementById('ring-wr').textContent = wr;
+  document.getElementById('sys-wr').textContent = wr + '%';
+  document.getElementById('sys-pf').textContent = d.profit_factor;
+
+  const ddEl = document.getElementById('sys-dd');
+  ddEl.textContent = (d.today_pnl >= 0 ? '+$' : '-$') + Math.abs(d.today_pnl).toFixed(2);
+  ddEl.className = d.today_pnl >= 0 ? 'metric-green' : 'metric-red';
+
+  const avgTrade = d.total_trades > 0 ? (pnl / d.total_trades).toFixed(2) : '0.00';
+  document.getElementById('pnl-detail').textContent =
+    d.total_trades + ' trades · ' + wr + '% win rate · $' + avgTrade + '/trade avg';
+
+  const arc = document.getElementById('ring-arc');
+  const circ = 226;
+  arc.setAttribute('stroke-dashoffset', circ * (1 - wr / 100));
+  arc.setAttribute('stroke', wr >= 65 ? '#4aaa4a' : wr >= 55 ? '#e8a030' : '#cc3333');
+
+  document.getElementById('streak-val').textContent = d.win_streak + 'W';
+  document.getElementById('stat-trades').textContent = d.total_trades;
+  document.getElementById('stat-approved').textContent = d.specialists.approved;
+  document.getElementById('stat-probation').textContent = d.specialists.probation;
+  document.getElementById('stat-eliminated').textContent = d.specialists.eliminated;
+  document.getElementById('stat-open').textContent = d.open_trades;
+  document.getElementById('stat-warning').textContent = d.specialists.warning || 0;
+  document.getElementById('slot-used').textContent = d.open_trades;
+  document.getElementById('prob-slots').textContent = d.specialists.probation;
+}
+
+// ── FETCH SPECIALISTS ──────────────────────────────────────────────────────
+async function fetchSpecialists() {
+  const specs = await fetchJson('/specialists');
+  if (!specs) return;
+
+  const list = document.getElementById('spec-list');
+  if (specs.length === 0) {
+    list.innerHTML = '<div style="color:var(--gray);font-size:9px;text-align:center;padding:15px">No active specialists yet</div>';
+    return;
+  }
+
+  list.innerHTML = specs.map(s => {
+    const wr = Math.round((s.winrate || 0) * 100);
+    const barClass = wr >= 65 ? 'green' : wr >= 55 ? 'orange' : 'red';
+    const wrClass = wr >= 65 ? 'win-txt' : wr >= 55 ? '' : 'loss-txt';
+    const dotClass = s.status.toLowerCase();
+    return `<div class="spec-row">
+      <span class="sdot ${dotClass}"></span>
+      <span class="spec-id">${s.id.slice(0,6)}</span>
+      <span class="spec-regime">${s.regime_type}</span>
+      <div class="spec-bar-bg"><div class="spec-bar-fill ${barClass}" style="width:${wr}%"></div></div>
+      <span class="spec-wr ${wrClass}">${wr}%</span>
+      <span class="spec-trades">${s.total_trades}t</span>
+    </div>`;
+  }).join('');
+}
+
+// ── FETCH EQUITY ───────────────────────────────────────────────────────────
+async function fetchEquity() {
+  const data = await fetchJson('/equity_curve?hours=24');
+  if (!data || data.length === 0) return;
+
+  const labels = data.map(d => d.time ? d.time.slice(11,16) : '');
+  const values = data.map(d => d.pnl);
+
+  equityChart.data.labels = labels;
+  equityChart.data.datasets[0].data = values;
+  const lastPnl = values[values.length - 1] || 0;
+  equityChart.data.datasets[0].borderColor = lastPnl >= 0 ? '#4aaa4a' : '#cc3333';
+  equityChart.data.datasets[0].backgroundColor = lastPnl >= 0 ? 'rgba(74,170,74,0.07)' : 'rgba(204,51,51,0.07)';
+  equityChart.update('none');
+}
+
+// ── FETCH REGIME ───────────────────────────────────────────────────────────
+async function fetchRegime() {
+  const r = await fetchJson('/regime');
+  if (!r || !r.regime) return;
+
+  const boxes = document.querySelectorAll('.regime-box');
+  boxes.forEach(box => {
+    box.classList.remove('active');
+    const conf = box.querySelector('.regime-conf');
+    const bar = box.querySelector('.regime-bar-fill');
+    if (box.dataset.regime === r.regime) {
+      box.classList.add('active');
+      const pct = Math.round((r.confidence || 0) * 100);
+      conf.textContent = pct + '%';
+      bar.style.width = pct + '%';
+      document.getElementById('pipe-regime').textContent = r.regime + ' ' + pct + '%';
+    }
+  });
+}
+
+// ── FETCH TRADES ───────────────────────────────────────────────────────────
+async function fetchTrades() {
+  const trades = await fetchJson('/recent_trades?limit=8');
+  if (!trades) return;
+
+  const list = document.getElementById('trade-list');
+  if (trades.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:15px;color:var(--gray);font-size:9px">No closed trades yet</div>';
+    return;
+  }
+
+  list.innerHTML = trades.map(t => {
+    const isWin = t.result === 'WIN';
+    const pnl = t.pnl != null ? (isWin ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2) : '--';
+    const timeStr = t.close_at ? t.close_at.slice(11,16) : '--';
+    return `<div class="trade-row ${isWin ? 'win-row' : 'loss-row'}">
+      <span class="trade-spec">${(t.specialist_id || '').slice(0,6)}</span>
+      <span class="trade-sym">${t.symbol || '--'}</span>
+      <span class="trade-dir">${t.direction || '--'}</span>
+      <span class="trade-regime">${t.regime_at_entry || '--'}</span>
+      <span class="trade-pnl ${isWin ? 'win-txt' : 'loss-txt'}">${pnl} ${isWin ? '▲' : '▼'}</span>
+      <span class="trade-time">${timeStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── FETCH LIVE POSITIONS ───────────────────────────────────────────────────
+async function fetchLivePositions() {
+  const positions = await fetchJson('/live_positions');
+  const list = document.getElementById('live-list');
+  const livePnlSpan = document.getElementById('sys-live-pnl');
+  
+  if (!positions) return;
+
+  if (positions.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:15px;color:var(--gray);font-size:9px">No open positions</div>';
+    livePnlSpan.textContent = '$0.00';
+    livePnlSpan.className = 'metric-green';
+    return;
+  }
+
+  let totalLivePnl = 0;
+  
+  list.innerHTML = positions.map(p => {
+    totalLivePnl += p.profit;
+    const isWin = p.profit >= 0;
+    const pnl = (isWin ? '+$' : '-$') + Math.abs(p.profit).toFixed(2);
+    const timeStr = p.time ? p.time.slice(11,16) : '--';
+    const specId = (p.comment && p.comment.startsWith('spec_')) ? p.comment.split('_')[1].slice(0,6) : 'manual';
+    
+    return `<div class="trade-row ${isWin ? 'win-row' : 'loss-row'}" style="background:#fdf8ee">
+      <span class="trade-spec" style="color:var(--orange2)">${specId}</span>
+      <span class="trade-sym">${p.symbol || '--'}</span>
+      <span class="trade-dir">${p.type || '--'}</span>
+      <span class="trade-regime">${p.volume} lot</span>
+      <span class="trade-pnl ${isWin ? 'win-txt' : 'loss-txt'}">${pnl} ${isWin ? '▲' : '▼'}</span>
+      <span class="trade-time">${timeStr}</span>
+    </div>`;
+  }).join('');
+
+  livePnlSpan.textContent = (totalLivePnl >= 0 ? '+$' : '-$') + Math.abs(totalLivePnl).toFixed(2);
+  livePnlSpan.className = totalLivePnl >= 0 ? 'metric-green' : 'metric-red';
+}
+
+// ── FETCH FAST-KILL LOG ────────────────────────────────────────────────────
+async function fetchFKLog() {
+  const events = await fetchJson('/fast_kill_log');
+  if (!events) return;
+
+  const list = document.getElementById('fk-list');
+  if (events.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:10px;color:var(--gray);font-size:9px">No events yet</div>';
+    return;
+  }
+
+  list.innerHTML = events.map(e => {
+    const t = e.timestamp ? e.timestamp.slice(11,16) : '--';
+    return `<div class="fk-row">
+      <span class="fk-badge ${e.event_type.toLowerCase()}">${e.event_type}</span>
+      <span class="fk-desc">${e.description || '--'}</span>
+      <span class="fk-time">${t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── ANIMATE PIPELINE ───────────────────────────────────────────────────────
+function animatePipeline() {
+  cycleCount++;
+  document.getElementById('pipeline-cycle').textContent = 'CYCLE #' + cycleCount;
+  const steps = document.querySelectorAll('.pipe');
+  let step = 0;
+  const interval = setInterval(() => {
+    steps.forEach((el, i) => {
+      el.className = i < step ? 'pipe done' : i === step ? 'pipe active' : 'pipe';
+    });
+    step++;
+    if (step >= steps.length) {
+      steps.forEach(el => el.className = 'pipe done');
+      clearInterval(interval);
+      setTimeout(() => steps.forEach(el => el.className = 'pipe'), 2000);
+    }
+  }, 600);
+}
+
+// ── FETCH HELPER ───────────────────────────────────────────────────────────
+async function fetchJson(endpoint) {
+  try {
+    const res = await fetch(API + endpoint, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setConnStatus(true);
+    return await res.json();
+  } catch (e) {
+    setConnStatus(false);
+    return null;
+  }
+}
+
+function setConnStatus(ok) {
+  const el = document.getElementById('conn-status');
+  el.textContent = ok ? '● API OK' : '● API DOWN';
+  el.className = 'conn-status ' + (ok ? 'ok' : 'err');
+}
+
+// ── REFRESH ALL ────────────────────────────────────────────────────────────
+async function refreshAll() {
+  await Promise.all([
+    fetchSummary(),
+    fetchSpecialists(),
+    fetchEquity(),
+    fetchRegime(),
+    fetchTrades(),
+    fetchLivePositions(),
+    fetchFKLog(),
+  ]);
+  document.getElementById('last-update').textContent =
+    'Last update: ' + new Date().toUTCString().slice(17,25) + ' UTC';
+  animatePipeline();
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+initChart();
+setInterval(updateClock, 1000);
+updateClock();
+refreshAll();
+setInterval(refreshAll, 5000);
+</script>
+</body>
+</html>
