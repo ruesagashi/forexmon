@@ -94,7 +94,9 @@ class Scheduler:
                 from monitoring.alerting import telegram_alerter
                 telegram_alerter.send_alert(f"🏁 <b>TRADE CLOSED</b>\nSym: {trade['symbol']}\nResult: {result}\nPnL: {pnl:.2f}\nSpec: {trade['specialist_id']}")
                 
-                # Trigger evaluasi
+                
+                # Update metrics dan trigger evaluasi
+                db.update_specialist_metrics(trade['specialist_id'])
                 pool_manager.evaluate_fast_kill(trade['specialist_id'])
 
     def _run_cycle(self):
