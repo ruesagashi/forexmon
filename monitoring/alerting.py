@@ -5,7 +5,7 @@ import threading
 
 class TelegramAlerter:
     def __init__(self):
-        self.bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+        self.bot_token = getattr(settings, 'TELEGRAM_TOKEN', None)
         self.chat_id = getattr(settings, 'TELEGRAM_CHAT_ID', None)
         self.enabled = bool(self.bot_token and self.chat_id)
 

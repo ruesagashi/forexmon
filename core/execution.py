@@ -123,7 +123,7 @@ class ExecutionEngine:
         if result:
             logger.success(f"[Execution] Order berhasil! Ticket: {result['ticket']}")
             from core.memory import db
-            db.add_trade(
+            db.open_trade(
                 specialist_id=specialist.id,
                 symbol=symbol,
                 direction=direction,

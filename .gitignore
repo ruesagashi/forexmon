@@ -14,7 +14,7 @@ ENV/
 .env
 
 # Database & Backups
-forexmon.db
+*.db
 backups/
 
 # Logs

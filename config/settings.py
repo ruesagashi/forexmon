@@ -17,9 +17,9 @@ class TradingConfig(BaseSettings):
 
     # ── MT5 Connection ────────────────────────────────────────────────────────
     MT5_PATH: str = r"C:\Program Files\FBS MetaTrader 5\terminal64.exe"
-    MT5_LOGIN: int = 106353764               # ← Nomor akun MT5
-    MT5_PASSWORD: str = "zpa[3;5X"   # ← ISI dengan password akun MT5
-    MT5_SERVER: str = "FBS-Demo"  # ← ISI dengan nama server broker
+    MT5_LOGIN: int = 0               # ← Nomor akun MT5
+    MT5_PASSWORD: str = "YOUR_PASSWORD"   # ← ISI dengan password akun MT5
+    MT5_SERVER: str = "YOUR_BROKER_SERVER"  # ← ISI dengan nama server broker
 
     # ── Symbol & Timeframe ────────────────────────────────────────────────────
     SYMBOLS: List[str] = ["XAUUSD"]
@@ -104,8 +104,8 @@ class TradingConfig(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # ── Telegram Notifications ────────────────────────────────────────────────
-    TELEGRAM_TOKEN: str = "YOUR_BOT_TOKEN"   # ← ISI dengan token Telegram bot
-    TELEGRAM_CHAT_ID: str = "YOUR_CHAT_ID"   # ← ISI dengan chat ID
+    TELEGRAM_TOKEN: str = ""   # ← ISI dengan token Telegram bot
+    TELEGRAM_CHAT_ID: str = ""   # ← ISI dengan chat ID
 
     # ── Performance Targets (untuk monitoring) ────────────────────────────────
     TARGET_SYSTEM_WR: float = 0.58      # Target WR keseluruhan sistem
