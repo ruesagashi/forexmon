@@ -56,6 +56,7 @@ class MemoryDB:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS specialists (
                 id              TEXT PRIMARY KEY,
+                symbol          TEXT NOT NULL DEFAULT 'XAUUSD',
                 regime_type     TEXT NOT NULL,
                 status          TEXT NOT NULL DEFAULT 'PROBATION',
                 model_path      TEXT,
@@ -148,6 +149,7 @@ class MemoryDB:
         self,
         specialist_id: str,
         regime_type: str,
+        symbol: str = "XAUUSD",
         model_path: str = None,
         features_used: list = None,
         metadata: dict = None,
@@ -157,11 +159,12 @@ class MemoryDB:
             conn = self._get_conn()
             conn.execute(
                 """INSERT INTO specialists
-                   (id, regime_type, status, model_path, features_used, created_at, metadata)
-                   VALUES (?, ?, 'PROBATION', ?, ?, ?, ?)""",
+                   (id, regime_type, symbol, status, model_path, features_used, created_at, metadata)
+                   VALUES (?, ?, ?, 'PROBATION', ?, ?, ?, ?)""",
                 (
                     specialist_id,
                     regime_type,
+                    symbol,
                     model_path,
                     json.dumps(features_used or []),
                     datetime.utcnow().isoformat(),
@@ -191,13 +194,18 @@ class MemoryDB:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_specialists_by_regime(self, regime_type: str, status: str = "APPROVED") -> list[dict]:
+    def get_specialists_by_regime(self, regime_type: str, status: str = "APPROVED", symbol: str = None) -> list[dict]:
         """Ambil specialist APPROVED untuk regime tertentu."""
         conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM specialists WHERE regime_type = ? AND status = ?",
-            (regime_type, status),
-        ).fetchall()
+        
+        query = "SELECT * FROM specialists WHERE regime_type = ? AND status = ?"
+        params = [regime_type, status]
+        
+        if symbol is not None:
+            query += " AND symbol = ?"
+            params.append(symbol)
+            
+        rows = conn.execute(query, tuple(params)).fetchall()
         return [dict(r) for r in rows]
 
     def update_specialist_status(self, specialist_id: str, status: str) -> bool:

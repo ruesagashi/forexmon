@@ -29,10 +29,10 @@ class TradingConfig(BaseSettings):
 
     # ── Risk Management ───────────────────────────────────────────────────────
     RISK_PER_TRADE: float = 0.01     # 1% balance per trade
-    MAX_DAILY_DD: float = 0.03       # 3% max drawdown per hari
-    MAX_TOTAL_DD: float = 0.10       # 10% max drawdown total
-    SL_ATR_MULT: float = 1.5         # SL = 1.5 × ATR(14)
-    TP_ATR_MULT: float = 2.0         # TP = 2.0 × ATR(14)
+    MAX_DAILY_DD: float = 0.5       # 3% max drawdown per hari
+    MAX_TOTAL_DD: float = 0.5       # 10% max drawdown total
+    SL_ATR_MULT: float = 1.7         # SL = 1.5 × ATR(14)
+    TP_ATR_MULT: float = 1.2         # TP = 2.0 × ATR(14)
 
     # ── Slot Management ───────────────────────────────────────────────────────
     TOTAL_SLOTS: int = 50

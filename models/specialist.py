@@ -26,9 +26,10 @@ class Specialist:
     Mengandung XGBoost model, metadata, dan performance metrics.
     """
 
-    def __init__(self, regime: Regime, feature_cols: List[str]):
+    def __init__(self, regime: Regime, feature_cols: List[str], symbol: str = "XAUUSD"):
         self.id = str(uuid.uuid4())[:8]  # Short UUID
         self.regime = regime
+        self.symbol = symbol
         self.status = "PROBATION"
         self.feature_cols = feature_cols
         
@@ -94,6 +95,7 @@ class Specialist:
             pickle.dump({
                 "id": self.id,
                 "regime": self.regime,
+                "symbol": self.symbol,
                 "status": self.status,
                 "feature_cols": self.feature_cols,
                 "model": self.model,
@@ -109,7 +111,7 @@ class Specialist:
         with open(filepath, "rb") as f:
             data = pickle.load(f)
             
-        spec = cls(regime=data["regime"], feature_cols=data["feature_cols"])
+        spec = cls(regime=data["regime"], feature_cols=data["feature_cols"], symbol=data.get("symbol", "XAUUSD"))
         spec.id = data["id"]
         spec.status = data["status"]
         spec.model = data["model"]
@@ -204,15 +206,16 @@ class SpecialistTrainer:
             
         return labels
 
-    def train_specialist(self, regime: Regime, df_historical: pd.DataFrame, df_labels: pd.Series) -> Specialist:
+    def generate_specialist(self, regime: Regime, symbol: str, df_historical: pd.DataFrame, df_labels: pd.Series) -> "Specialist":
         """
-        Train sebuah XGBoost model untuk regime spesifik.
+        Train specialist baru untuk suatu regime.
         Args:
             regime: Target regime
+            symbol: Target symbol
             df_historical: DataFrame fitur
             df_labels: Series dari Master Brain yang melabeli regime tiap row
         """
-        logger.info(f"[SpecialistTrainer] Mempersiapkan data untuk {regime.name}...")
+        logger.info(f"[SpecialistTrainer] Mempersiapkan data untuk {regime.name} ({symbol})...")
         
         # Filter data hanya untuk regime ini
         mask = df_labels == regime.name
@@ -260,7 +263,7 @@ class SpecialistTrainer:
         logger.info(f"[SpecialistTrainer] Training selesai. In-sample Accuracy: {acc:.2%}")
         
         # Buat objek Specialist
-        spec = Specialist(regime=regime, feature_cols=self.feature_cols)
+        spec = Specialist(regime=regime, feature_cols=self.feature_cols, symbol=symbol)
         spec.model = model
         
         return spec

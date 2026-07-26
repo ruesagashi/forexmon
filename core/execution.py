@@ -53,7 +53,7 @@ class ExecutionEngine:
             return
 
         # 4. Specialist Selection
-        specialist = pool_manager.get_best_specialist_for_regime(regime)
+        specialist = pool_manager.get_best_specialist_for_regime(regime, symbol=symbol)
         if not specialist:
             logger.info(f"[Execution] Tidak ada Specialist aktif untuk regime {regime}.")
             return

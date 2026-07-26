@@ -60,13 +60,13 @@ class SpecialistPoolManager:
             logger.error(f"[PoolManager] Gagal meload specialist {specialist_id}: {e}")
             return None
 
-    def get_best_specialist_for_regime(self, regime_name: str) -> Optional[Specialist]:
+    def get_best_specialist_for_regime(self, regime_name: str, symbol: str) -> Optional[Specialist]:
         """
         Ambil specialist APPROVED terbaik untuk regime saat ini menggunakan algoritma UCB1 (Multi-Armed Bandit).
         Jika tidak ada APPROVED, coba ambil dari PROBATION (highest winrate).
         """
         # Prioritas 1: APPROVED dengan UCB1
-        approved = db.get_specialists_by_regime(regime_name, status="APPROVED")
+        approved = db.get_specialists_by_regime(regime_name, status="APPROVED", symbol=symbol)
         if approved:
             import math
             # N = total trades dari semua approved di regime ini
@@ -91,7 +91,7 @@ class SpecialistPoolManager:
                 return self.get_specialist_object(best_spec["id"])
             
         # Prioritas 2: PROBATION (Explore Murni)
-        probation = db.get_specialists_by_regime(regime_name, status="PROBATION")
+        probation = db.get_specialists_by_regime(regime_name, status="PROBATION", symbol=symbol)
         if probation:
             best_id = max(probation, key=lambda x: x["winrate"])["id"]
             return self.get_specialist_object(best_id)
