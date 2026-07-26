@@ -29,6 +29,7 @@ class SpecialistPoolManager:
         success = db.add_specialist(
             specialist_id=specialist.id,
             regime_type=specialist.regime.name,
+            symbol=specialist.symbol,
             model_path=specialist.save(),
             features_used=specialist.feature_cols,
             metadata={"composite_score": specialist.composite_score}
