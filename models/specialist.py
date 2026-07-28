@@ -73,8 +73,10 @@ class Specialist:
         elif pred_class == 2:
             signal = -1
             
-        # Terapkan threshold confidence (misal 0.6)
-        if confidence < 0.6:
+        # Terapkan threshold confidence
+        # Untuk 3-class, random guess adalah 0.33. Threshold 0.6 terlalu tinggi.
+        # Kita turunkan ke 0.45 agar AI berani mengambil posisi (BUY/SELL)
+        if confidence < 0.45:
             return 0, confidence
             
         return signal, confidence
