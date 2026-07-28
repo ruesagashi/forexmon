@@ -52,6 +52,9 @@ def backtest_all_specialists():
     # Cache per symbol untuk optimasi agar tidak download berkali-kali
     history_cache = {}
     
+    approved_count = 0
+    eliminated_count = 0
+    
     for row in rows:
         spec_dict = dict(row)
         spec_id = spec_dict["id"]
@@ -61,7 +64,7 @@ def backtest_all_specialists():
         try:
             specialist = Specialist.load(model_path)
         except Exception as e:
-            logger.error(f"[Backtester] Gagal meload model {spec_id} dari {model_path}: {e}")
+            logger.error(f"Failed to load {spec_id}: {e}")
             continue
             
         if symbol not in history_cache:
@@ -87,17 +90,20 @@ def backtest_all_specialists():
         
         # Logika Update Status sesuai aturan
         if total_trades > 0:
-            if wr > 0.60 and pf > 1.30:
-                logger.success(f"[Backtester] {spec_id} memenuhi syarat! Status -> APPROVED")
+            if wr >= 0.60 and pf >= 1.30:
                 db.update_specialist_status(spec_id, "APPROVED")
+                logger.success(f"{spec_id} → APPROVED (WR {wr:.1%})")
+                approved_count += 1
             elif wr < 0.50:
-                logger.warning(f"[Backtester] {spec_id} di bawah standar. Status -> ELIMINATED")
                 db.update_specialist_status(spec_id, "ELIMINATED")
+                logger.warning(f"{spec_id} → ELIMINATED (WR {wr:.1%})")
+                eliminated_count += 1
             else:
                 logger.info(f"[Backtester] {spec_id} nanggung. Tetap {spec_dict['status']}.")
         
     connector.shutdown()
     logger.info("[Backtester] Selesai melakukan mass backtest!")
+    print(f"Approved: {approved_count}, Eliminated: {eliminated_count}")
 
 if __name__ == "__main__":
     backtest_all_specialists()
