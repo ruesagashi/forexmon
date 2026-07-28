@@ -29,8 +29,8 @@ class TradingConfig(BaseSettings):
 
     # ── Risk Management — AGRESIF TAPI TERKONTROL ────────────────────────────
     RISK_PER_TRADE: float = 0.02     # 2% balance per trade (agresif)
-    MAX_DAILY_DD: float = 0.06       # 6% max drawdown per hari — STOP jika tercapai
-    MAX_TOTAL_DD: float = 0.15       # 15% max drawdown total — EMERGENCY STOP
+    MAX_DAILY_DD: float = 0.1       # 6% max drawdown per hari — STOP jika tercapai
+    MAX_TOTAL_DD: float = 0.35       # 15% max drawdown total — EMERGENCY STOP
     
     # ── SL/TP — RR 1:1.5 untuk M5 agresif ───────────────────────────────────
     # PENTING: TP harus selalu lebih besar dari SL

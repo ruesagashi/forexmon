@@ -12,17 +12,34 @@ class BacktestEngine:
     
     @staticmethod
     def calculate_max_drawdown(trades: list) -> float:
+        """
+        Hitung Max Drawdown sebagai persentase dari peak equity.
+        Return nilai 0.0 - 1.0 (bukan lebih dari 1.0).
+        """
+        if not trades:
+            return 0.0
+        
         cumulative = 0.0
         peak = 0.0
         max_dd = 0.0
+        
+        # Gunakan win/loss count bukan nilai PnL absolut
+        # untuk menghindari distorsi dari harga pair yang tinggi
         for t in trades:
-            cumulative += t["pnl"]
+            if t["result"] == 1:  # WIN
+                cumulative += 1.0
+            else:  # LOSS
+                cumulative -= 1.0
+                
             if cumulative > peak:
                 peak = cumulative
-            dd = (peak - cumulative) / peak if peak > 0 else 0.0
-            if dd > max_dd:
-                max_dd = dd
-        return max_dd
+                
+            if peak > 0:
+                dd = (peak - cumulative) / peak
+                if dd > max_dd:
+                    max_dd = dd
+                    
+        return min(max_dd, 1.0)  # Cap di 100%
 
     def __init__(self, df: pd.DataFrame, specialist: Specialist):
         self.df = df
