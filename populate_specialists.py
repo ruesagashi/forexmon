@@ -29,8 +29,8 @@ def main():
     import random
     
     for symbol in settings.SYMBOLS:
-        logger.info(f"Mengambil 20000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
-        df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=20000)
+        logger.info(f"Mengambil 50000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
+        df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=50000)
         if df_raw is None or df_raw.empty:
             logger.error(f"Gagal ambil data {symbol}.")
             continue
@@ -51,7 +51,7 @@ def main():
             logger.info(f"--- Training Specialist untuk {regime.name} ({symbol}) ---")
             df_regime = df_f[df_f["regime"] == regime.value].copy()
             
-            if len(df_regime) < 100:
+            if len(df_regime) < 300:
                 logger.warning(f"Data historis {regime.name} ({symbol}) terlalu sedikit ({len(df_regime)} baris). Skip.")
                 continue
                 
