@@ -149,7 +149,7 @@ class SpecialistTrainer:
         tp_mult = settings.TP_ATR_MULT
         
         # Max horizon to look for TP/SL (e.g. 24 candles)
-        horizon = 24
+        horizon = 10
         
         n = len(df)
         for i in range(n - 1):

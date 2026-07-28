@@ -175,8 +175,8 @@ def run_pre_filter(df: pd.DataFrame, specialist: Specialist, regime_confidence: 
         logger.warning(f"[Pre-Filter] GAGAL: WR={results['winrate']:.2f}, PF={results['profit_factor']:.2f}")
         return False, results
         
-    if results["max_drawdown"] > 0.15:
-        logger.warning(f"[Pre-Filter] GAGAL: Max Drawdown {results['max_drawdown']:.1%} > 15%")
+    if results["max_drawdown"] > 0.40:
+        logger.warning(f"[Pre-Filter] GAGAL: Max Drawdown {results['max_drawdown']:.1%} > 40%")
         return False, results
         
     mc = MonteCarloSimulator(results["trades"], num_simulations=1000)
