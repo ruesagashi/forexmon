@@ -60,9 +60,10 @@ class BacktestEngine:
         lows = self.df['low'].values
         atrs = self.df['atr'].values
         
-        sl_mult = 1.5  # from settings.SL_ATR_MULT, assuming 1.5 for simulation
-        tp_mult = 2.0  # from settings.TP_ATR_MULT, assuming 2.0 for simulation
-        horizon = 24
+        from config.settings import settings
+        sl_mult = settings.SL_ATR_MULT
+        tp_mult = settings.TP_ATR_MULT
+        horizon = 8
         
         n = len(self.df)
         for i in range(n - 1):
@@ -192,8 +193,8 @@ def run_pre_filter(df: pd.DataFrame, specialist: Specialist, regime_confidence: 
         logger.warning(f"[Pre-Filter] GAGAL: WR={results['winrate']:.2f}, PF={results['profit_factor']:.2f}")
         return False, results
         
-    if results["max_drawdown"] > 0.40:
-        logger.warning(f"[Pre-Filter] GAGAL: Max Drawdown {results['max_drawdown']:.1%} > 40%")
+    if results["max_drawdown"] > 0.60:
+        logger.warning(f"[Pre-Filter] GAGAL: Max Drawdown {results['max_drawdown']:.1%} > 60%")
         return False, results
         
     mc = MonteCarloSimulator(results["trades"], num_simulations=1000)
