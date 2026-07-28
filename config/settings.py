@@ -36,7 +36,7 @@ class TradingConfig(BaseSettings):
     # PENTING: TP harus selalu lebih besar dari SL
     # Dengan WR 60%: Expectancy = (0.6 × 1.5) - (0.4 × 1.0) = +0.5 per trade
     SL_ATR_MULT: float = 2.0         # SL ketat = 1.0 × ATR
-    TP_ATR_MULT: float = 1.2         # TP = 1.5 × ATR → RR 1:1.5
+    TP_ATR_MULT: float = 1.0         # TP = 1.5 × ATR → RR 1:1.5
 
     # ── Slot Management ───────────────────────────────────────────────────────
     TOTAL_SLOTS: int = 50

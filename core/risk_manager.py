@@ -76,6 +76,12 @@ class RiskManager:
         # sl_distance_points di sini adalah selisih harga absolut, misal open 2400, sl 2390 -> distance = 10.
         # Loss per 1 lot = distance * contract_size
         contract_size = symbol_info.get("trade_contract_size", 100.0)
+        
+        # FIX: Broker Valetax (dan bbrp broker lain) mengembalikan contract_size = 1.0
+        # padahal secara riil margin yang dihitung MT5 adalah 100 oz per 1 lot.
+        if "XAUUSD" in symbol.upper():
+            contract_size = 100.0
+            
         loss_per_1_lot = sl_distance_points * contract_size
         
         if loss_per_1_lot <= 0:
