@@ -208,6 +208,17 @@ class MemoryDB:
         rows = conn.execute(query, tuple(params)).fetchall()
         return [dict(r) for r in rows]
 
+    def count_specialists(self, status: str, regime_type: str = None) -> int:
+        """Menghitung jumlah specialist dengan status dan regime tertentu."""
+        conn = self._get_conn()
+        query = "SELECT COUNT(*) as cnt FROM specialists WHERE status = ?"
+        params = [status]
+        if regime_type:
+            query += " AND regime_type = ?"
+            params.append(regime_type)
+        row = conn.execute(query, tuple(params)).fetchone()
+        return row["cnt"] if row else 0
+
     def update_specialist_status(self, specialist_id: str, status: str) -> bool:
         """Update status specialist (PROBATION/APPROVED/WARNING/SUSPENDED/ELIMINATED)."""
         valid_statuses = {"PROBATION", "APPROVED", "WARNING", "SUSPENDED", "ELIMINATED"}
