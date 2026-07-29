@@ -223,8 +223,8 @@ class SpecialistTrainer:
         mask = df_labels == regime.name
         df_regime = df_historical[mask].copy()
         
-        if len(df_regime) < 1000:
-            logger.warning(f"Data untuk {regime.name} terlalu sedikit ({len(df_regime)}). Butuh minimal 1000.")
+        if len(df_regime) < 150:
+            logger.warning(f"Data untuk {regime.name} terlalu sedikit ({len(df_regime)}). Butuh minimal 150.")
             return None
             
         # Generate target labels berdasarkan rules TP/SL
