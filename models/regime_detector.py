@@ -110,7 +110,9 @@ def label_regime_manual(df: pd.DataFrame) -> pd.Series:
     # RANGING
     ranging = (
         (df["adx"] < 20) &
-        (df["bb_width"] < bb_width_med)
+        (df["bb_width"] < bb_width_med) &
+        (abs(df["ema_slope"]) < 0.05) &
+        (df["atr_ratio"] < atr_ratio_med)
     )
 
     # BREAKOUT
