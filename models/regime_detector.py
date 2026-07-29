@@ -89,6 +89,7 @@ def label_regime_manual(df: pd.DataFrame) -> pd.Series:
     labels = pd.Series("UNCERTAIN", index=df.index)
     bb_width_med = df["bb_width"].median()
     bb_width_75 = df["bb_width"].quantile(0.75)
+    bb_width_40 = df["bb_width"].quantile(0.40)
     atr_ratio_med = df["atr_ratio"].median()
 
     # TRENDING UP
@@ -109,10 +110,10 @@ def label_regime_manual(df: pd.DataFrame) -> pd.Series:
 
     # RANGING
     ranging = (
-        (df["adx"] < 20) &
-        (df["bb_width"] < bb_width_med) &
-        (abs(df["ema_slope"]) < 0.05) &
-        (df["atr_ratio"] < atr_ratio_med)
+        (df["adx"] < 15) &
+        (df["bb_width"] < bb_width_40) &
+        (abs(df["ema_slope"]) < 0.03) &
+        (df["atr_ratio"] < atr_ratio_med * 0.8)
     )
 
     # BREAKOUT
