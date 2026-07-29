@@ -117,23 +117,24 @@ def label_regime_manual(df: pd.DataFrame) -> pd.Series:
     )
 
     # BREAKOUT
+    bb_width_60 = df["bb_width"].quantile(0.60)
     breakout = (
-        (df["bb_width"] > bb_width_75) &
-        (df["volume_ratio"] > 1.5) &
-        (df["atr_ratio"] > atr_ratio_med)
+        (df["bb_width"] > bb_width_60) &
+        (df["volume_ratio"] > 1.2) &
+        (df["atr_ratio"] > atr_ratio_med * 0.9)
     )
 
     # REVERSAL — RSI extreme + candle pattern konfirmasi
+    any_pattern = (
+        (df["pattern_hammer"] == 1) | 
+        (df["pattern_pin_bar"] == 1) | 
+        (df["pattern_engulf_bull"] == 1) | 
+        (df["pattern_engulf_bear"] == 1)
+    )
     reversal = (
-        (
-            (df["rsi"] < 30) & (df["pattern_hammer"] == 1)
-        ) | (
-            (df["rsi"] > 70) & (df["pattern_pin_bar"] == 1)
-        ) | (
-            (df["rsi"] < 35) & (df["pattern_engulf_bull"] == 1)
-        ) | (
-            (df["rsi"] > 65) & (df["pattern_engulf_bear"] == 1)
-        )
+        (((df["rsi"] > 65) & (df["rsi"].shift(1) > 65)) | 
+         ((df["rsi"] < 35) & (df["rsi"].shift(1) < 35))) &
+        any_pattern
     )
 
     # Terapkan dengan prioritas (Reversal > Breakout > Trending > Ranging)
