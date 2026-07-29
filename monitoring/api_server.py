@@ -132,7 +132,7 @@ def get_specialists():
                 WHEN 'SUSPENDED' THEN 4 
             END,
             winrate DESC
-        LIMIT 20
+        LIMIT 50
     """).fetchall()
     return [dict(r) for r in rows]
 
