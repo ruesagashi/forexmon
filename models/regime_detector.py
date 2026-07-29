@@ -393,8 +393,14 @@ class RegimeDetector:
                         regime = Regime(regime_label)
                     except ValueError:
                         regime = Regime.UNCERTAIN
-                    if confidence < settings.REGIME_CONFIDENCE_MIN:
+                    if regime == Regime.RANGING and confidence < 0.75:
+                        print(f"[DEBUG] RF confidence too low for RANGING: {confidence:.2f}")
                         return Regime.UNCERTAIN, confidence
+                    elif confidence < settings.REGIME_CONFIDENCE_MIN:
+                        print(f"[DEBUG] RF confidence too low: {confidence:.2f} for {regime_label}")
+                        return Regime.UNCERTAIN, confidence
+                        
+                    print(f"[DEBUG] RF Pred: {regime_label}, Confidence: {confidence:.2f}, Probas: {proba}")
                     logger.debug(f"[RF] Regime: {regime} (conf: {confidence:.2f})")
                     return regime, confidence
                 except Exception as e:
@@ -441,6 +447,7 @@ class RegimeDetector:
         confidence = float(last_posterior[last_state])
 
         regime = self.state_map.get(last_state, Regime.UNCERTAIN)
+        print(f"[DEBUG] HMM State: {last_state}, Regime mapped: {regime}, Confidence: {confidence:.2f}")
         return regime, confidence
 
     def _predict_kmeans(self, X_scaled: np.ndarray) -> Tuple[str, float]:
