@@ -51,7 +51,7 @@ def main():
             logger.info(f"--- Training Specialist untuk {regime.name} ({symbol}) ---")
             df_regime = df_f[df_f["regime"] == regime.value].copy()
             
-            if len(df_regime) < 300:
+            if len(df_regime) < 150:
                 logger.warning(f"Data historis {regime.name} ({symbol}) terlalu sedikit ({len(df_regime)} baris). Skip.")
                 continue
                 
