@@ -130,6 +130,16 @@ class ExecutionEngine:
             sl_pips=sl_pips
         )
         
+        # Penyesuaian lot size mengikuti aturan broker (MT5 volume step)
+        vol_step = tick.get("volume_step", 0.01)
+        vol_min = tick.get("volume_min", 0.01)
+        vol_max = tick.get("volume_max", 100.0)
+        
+        steps = int(lot_size / vol_step)
+        lot_size = steps * vol_step
+        lot_size = max(vol_min, min(vol_max, lot_size))
+        lot_size = round(lot_size, 2)  # Hindari floating point precision issue (misal 0.07000001)
+        
         if lot_size <= 0:
             logger.warning("[Execution] Lot size <= 0, order dibatalkan.")
             return
