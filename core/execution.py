@@ -34,8 +34,22 @@ class ExecutionEngine:
             logger.error("[Execution] MT5 tidak terkoneksi. Abort cycle.")
             return
 
+        # Hitung current_dd dari DB
+        from datetime import datetime
+        from core.memory import db
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        rows = db._get_conn().execute("SELECT pnl FROM trades WHERE close_at >= ?", (today_start,)).fetchall()
+        daily_pnl = sum(r["pnl"] for r in rows if r["pnl"] is not None)
+        
+        account = connector.get_account_info()
+        balance = account["balance"] if account else 1000.0
+        
+        current_dd = 0.0
+        if daily_pnl < 0 and balance > 0:
+            current_dd = abs(daily_pnl) / balance
+
         # 2. Risk Manager: Cek apakah hari ini boleh trade
-        if not risk_manager.check_daily_limit():
+        if not risk_manager.check_daily_limit(current_dd):
             logger.warning("[Execution] Trading dihentikan oleh Risk Manager (Drawdown/Cooldown).")
             return
 
@@ -81,9 +95,6 @@ class ExecutionEngine:
         direction = "BUY" if signal == 1 else "SELL"
         atr = current_bar.get("atr", 1.0)
         
-        sl_dist_points = atr * settings.SL_ATR_MULT
-        tp_dist_points = atr * settings.TP_ATR_MULT
-        
         tick = connector.get_symbol_info(symbol)
         if not tick:
             return
@@ -91,24 +102,45 @@ class ExecutionEngine:
         ask = tick["ask"]
         bid = tick["bid"]
         
-        if direction == "BUY":
-            price = ask
-            sl = price - sl_dist_points
-            tp = price + tp_dist_points
-        else:
-            price = bid
-            sl = price + sl_dist_points
-            tp = price - tp_dist_points
+        price = ask if direction == "BUY" else bid
+
+        # Hitung SL/TP menggunakan RiskManager
+        sl, tp = risk_manager.calculate_sl_tp(
+            entry_price=price, 
+            direction=direction, 
+            atr=atr, 
+            regime=specialist.regime.value
+        )
             
         # Hitung Lot Size dari Risk Manager
-        lot_size = risk_manager.calculate_lot_size(symbol, sl_dist_points)
+        account = connector.get_account_info()
+        balance = account["balance"] if account else 1000.0
+        
+        # Konversi absolute distance ke pip (asumsi XAUUSD pip = 0.1 atau 0.01)
+        # Sesuai formula user: lot_size = risk_amount / (sl_pips * 0.1)
+        # Jika risk $50, entry 2000, sl 1990 ($10 dist). 
+        # Real loss 1 lot XAUUSD = $10 * 100 oz = $1000.
+        # Agar rumus (sl_pips * 0.1) = $1000, maka sl_pips harus 10000.
+        sl_abs_dist = abs(price - sl)
+        sl_pips = sl_abs_dist * 1000 
+        
+        lot_size = risk_manager.calculate_position_size(
+            balance=balance, 
+            risk_pct=settings.RISK_PER_TRADE, 
+            sl_pips=sl_pips
+        )
+        
         if lot_size <= 0:
-            logger.warning("[Execution] Lot size 0, order dibatalkan.")
+            logger.warning("[Execution] Lot size <= 0, order dibatalkan.")
+            return
+            
+        # Validasi akhir
+        if not risk_manager.validate_trade(lot_size, price, sl, tp):
             return
             
         comment = f"spec_{specialist.id}"
         
-        logger.info(f"[Execution] Eksekusi {direction} {lot_size} lot di {price:.2f} (SL: {sl:.2f}, TP: {tp:.2f}) by {specialist.id}")
+        logger.info(f"[Execution] Eksekusi {direction} {lot_size:.2f} lot di {price:.2f} (SL: {sl:.2f}, TP: {tp:.2f}) by {specialist.id}")
         
         result = connector.send_order(
             symbol=symbol,
