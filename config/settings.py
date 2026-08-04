@@ -28,15 +28,15 @@ class TradingConfig(BaseSettings):
     HISTORY_CANDLES: int = 5000
 
     # ── Risk Management — AGRESIF TAPI TERKONTROL ────────────────────────────
-    RISK_PER_TRADE: float = 0.02     # 2% balance per trade (agresif)
-    MAX_DAILY_DD: float = 0.1       # 6% max drawdown per hari — STOP jika tercapai
-    MAX_TOTAL_DD: float = 0.35       # 15% max drawdown total — EMERGENCY STOP
+    RISK_PER_TRADE: float = 0.05     # 2% balance per trade (agresif)
+    MAX_DAILY_DD: float = 1       # 6% max drawdown per hari — STOP jika tercapai
+    MAX_TOTAL_DD: float = 1       # 15% max drawdown total — EMERGENCY STOP
     
     # ── SL/TP — RR 1:1.5 untuk M5 agresif ───────────────────────────────────
     # PENTING: TP harus selalu lebih besar dari SL
     # Dengan WR 60%: Expectancy = (0.6 × 1.5) - (0.4 × 1.0) = +0.5 per trade
-    SL_ATR_MULT: float = 2.0         # SL ketat = 1.0 × ATR
-    TP_ATR_MULT: float = 1.0         # TP = 1.5 × ATR → RR 1:1.5
+    SL_ATR_MULT: float = 0.75         # SL ketat = 1.0 × ATR
+    TP_ATR_MULT: float = 1.4         # TP = 1.5 × ATR → RR 1:1.5
 
     # ── Slot Management ───────────────────────────────────────────────────────
     TOTAL_SLOTS: int = 50
@@ -74,7 +74,7 @@ class TradingConfig(BaseSettings):
     RECOVERY_TRADES: int = 10
 
     # ── Regime Detector ───────────────────────────────────────────────────────
-    REGIME_CONFIDENCE_MIN: float = 0.60
+    REGIME_CONFIDENCE_MIN: float = 0.45
     REGIME_UPDATE_TF: str = "M15"
     REGIME_HMM_STATES: int = 5
     REGIME_FEATURE_VECTOR: List[str] = [

@@ -1,0 +1,1 @@
+.\venv\Scripts\python.exe -c "from selection.backtester import backtest_all_specialists; backtest_all_specialists()"
