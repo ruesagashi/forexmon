@@ -219,7 +219,7 @@ class MemoryDB:
         row = conn.execute(query, tuple(params)).fetchone()
         return row["cnt"] if row else 0
 
-    def update_specialist_status(self, specialist_id: str, status: str) -> bool:
+    def update_specialist_status(self, specialist_id: str, status: str, reason: str = None) -> bool:
         """Update status specialist (PROBATION/APPROVED/WARNING/SUSPENDED/ELIMINATED)."""
         valid_statuses = {"PROBATION", "APPROVED", "WARNING", "SUSPENDED", "ELIMINATED"}
         if status not in valid_statuses:
@@ -231,10 +231,15 @@ class MemoryDB:
             (status, specialist_id),
         )
         conn.commit()
+        
+        desc = f"Specialist {specialist_id} → {status}"
+        if reason:
+            desc += f" ({reason})"
+            
         self.log_event(
             event_type="STATUS_CHANGE",
-            description=f"Specialist {specialist_id} → {status}",
-            metadata={"specialist_id": specialist_id, "new_status": status},
+            description=desc,
+            metadata={"specialist_id": specialist_id, "new_status": status, "reason": reason},
         )
         return True
 
@@ -346,6 +351,16 @@ class MemoryDB:
             (specialist_id, limit)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def get_trades_today(self) -> list[dict]:
+        """Ambil semua trade yang close_at nya hari ini."""
+        conn = self._get_conn()
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        rows = conn.execute(
+            "SELECT * FROM trades WHERE close_at LIKE ?", (f"{today_str}%",)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_open_trades(self) -> list:
         conn = self._get_conn()
         rows = conn.execute(
@@ -481,6 +496,20 @@ class MemoryDB:
         rows = conn.execute(
             "SELECT * FROM system_events ORDER BY timestamp DESC LIMIT ?", (limit,)
         ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_events_today(self, event_type: str = None) -> list[dict]:
+        """Ambil event hari ini."""
+        conn = self._get_conn()
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        query = "SELECT * FROM system_events WHERE timestamp LIKE ?"
+        params = [f"{today_str}%"]
+        
+        if event_type:
+            query += " AND event_type = ?"
+            params.append(event_type)
+            
+        rows = conn.execute(query, tuple(params)).fetchall()
         return [dict(r) for r in rows]
 
     # ─────────────────────────────────────────────────────────────────────────

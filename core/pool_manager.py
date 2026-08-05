@@ -183,7 +183,7 @@ class SpecialistPoolManager:
             
         # 2. Evaluasi Stage 3: APPROVED -> WARNING / SUSPENDED
         elif status in ["APPROVED", "WARNING"]:
-            self._evaluate_approved(specialist_id, status, trades, recent_wr)
+            self._evaluate_approved(spec, trades, recent_wr)
 
     def _evaluate_probation(self, specialist_id: str, total_trades: int, trades: list):
         """Evaluasi Stage 2 Fast-Kill"""
@@ -236,47 +236,140 @@ class SpecialistPoolManager:
                 db.update_specialist_status(specialist_id, "APPROVED")
                 logger.success(f"[Fast-Kill] {specialist_id} LULUS PROBATION! Status -> APPROVED.")
 
-    def _evaluate_approved(self, specialist_id: str, current_status: str, recent_20_trades: list, recent_wr: float):
-        """Evaluasi Stage 3 Monitoring"""
+    def _evaluate_approved(self, spec: dict, recent_20_trades: list, recent_wr: float):
+        """Evaluasi Stage 3 Monitoring & Performance Decay"""
+        specialist_id = spec["id"]
+        current_status = spec["status"]
+        overall_wr = spec["winrate"]
+        
+        # 1. Performance Decay Detection (Track last 10 trades)
+        if len(recent_20_trades) >= 10:
+            recent_10 = recent_20_trades[:10]
+            recent_10_wins = sum(1 for t in recent_10 if t["pnl"] > 0)
+            recent_10_wr = recent_10_wins / 10.0
+            
+            if current_status == "APPROVED":
+                if overall_wr - recent_10_wr > 0.15:
+                    db.update_specialist_status(specialist_id, "WARNING", reason="WR degradation detected")
+                    logger.warning(f"[PoolManager] {specialist_id} WR degradation detected: Overall {overall_wr:.1%} vs Recent 10 {recent_10_wr:.1%}")
+                    current_status = "WARNING"
+            
+            elif current_status == "WARNING":
+                # Check 5 next trades to see if it kept dropping.
+                if len(recent_20_trades) >= 5:
+                    recent_5 = recent_20_trades[:5]
+                    recent_5_wins = sum(1 for t in recent_5 if t["pnl"] > 0)
+                    recent_5_wr = recent_5_wins / 5.0
+                    
+                    if recent_5_wr < recent_10_wr:
+                        db.update_specialist_status(specialist_id, "SUSPENDED", reason="Continued WR decline in WARNING state")
+                        logger.error(f"[PoolManager] {specialist_id} SUSPENDED: Continued decline. Recent 5 WR {recent_5_wr:.1%} < Recent 10 WR {recent_10_wr:.1%}")
+                        return
+
         if len(recent_20_trades) < 20:
             return  # Tunggu sampai ada window 20 trade
             
         if current_status == "APPROVED":
             if recent_wr < 0.60:
-                db.update_specialist_status(specialist_id, "SUSPENDED")
+                db.update_specialist_status(specialist_id, "SUSPENDED", reason=f"WR drops below 60% ({recent_wr:.1%})")
                 logger.error(f"[PoolManager] {specialist_id} SUSPENDED: Recent WR drop ke {recent_wr:.1%}")
                 from monitoring.alerting import telegram_alerter
                 telegram_alerter.send_alert(f"⚠️ <b>SPECIALIST SUSPENDED</b>\nID: {specialist_id}\nReason: WR drops below 60% ({recent_wr:.1%})")
             elif recent_wr < 0.70:
-                db.update_specialist_status(specialist_id, "WARNING")
+                db.update_specialist_status(specialist_id, "WARNING", reason=f"WR drops below 70% ({recent_wr:.1%})")
                 logger.warning(f"[PoolManager] {specialist_id} WARNING: Recent WR drop ke {recent_wr:.1%}")
                 
         elif current_status == "WARNING":
             if recent_wr > 0.75:
-                db.update_specialist_status(specialist_id, "APPROVED")
+                db.update_specialist_status(specialist_id, "APPROVED", reason="Recovered WR > 75%")
                 logger.success(f"[PoolManager] {specialist_id} RECOVERED -> APPROVED. Recent WR {recent_wr:.1%}")
             elif recent_wr < 0.60:
-                db.update_specialist_status(specialist_id, "SUSPENDED")
+                db.update_specialist_status(specialist_id, "SUSPENDED", reason=f"WR drop ke {recent_wr:.1%}")
                 logger.error(f"[PoolManager] {specialist_id} SUSPENDED: WR drop ke {recent_wr:.1%}")
 
     def generate_daily_report(self):
         """
-        Setiap pagi print:
-        - Specialist yang paling banyak dipakai hari ini
-        - Win rate masing-masing
-        - Apakah ada yang bias (> 40% dari total trade)
+        Generate Enhanced Daily Report
         """
-        # Dalam implementasi nyata, ini butuh DB query trade hari ini.
-        # Simulasi log report:
-        from datetime import datetime, timedelta
+        from datetime import datetime
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
         
-        # Contoh jika ada fungsi di DB untuk mengambil trade 24 jam terakhir
-        # trades_today = db.get_trades_since(datetime.now() - timedelta(days=1))
-        # Karena db belum tentu punya ini, kita log kerangkanya:
+        trades_today = db.get_trades_today()
+        total_trades = len(trades_today)
+        approved_count = db.count_specialists("APPROVED")
         
-        logger.info("=== DAILY SPECIALIST USAGE REPORT ===")
-        # Logic to aggregate usage goes here when db supports it
-        logger.info("Report structure ready. Waiting for DB integration for daily trade querying.")
-        logger.info("=====================================")
+        events_today = db.get_events_today()
+        # Cari PROBATION via log
+        new_specialists = sum(1 for e in events_today if e["event_type"] == "STATUS_CHANGE" and "PROBATION" in (e.get("description") or ""))
+        eliminated_today = sum(1 for e in events_today if e["event_type"] == "STATUS_CHANGE" and "ELIMINATED" in (e.get("description") or ""))
+        
+        warning_specs = db.get_specialists_by_status("WARNING")
+        warning_count = len(warning_specs)
+        
+        # Fetch reason from recent events for the warnings
+        warning_details_list = []
+        for s in warning_specs:
+            spec_id = s["id"]
+            # To get exact reason, we can display WR
+            warning_details_list.append(f"{spec_id[:8]} (WR: {s['winrate']:.1%})")
+        warning_details = ", ".join(warning_details_list)
+        
+        # Calculate top and worst performer today based on all approved specialists
+        approved_specs = db.get_specialists_by_status("APPROVED")
+        valid_performers = [s for s in approved_specs if s["total_trades"] >= 20]
+        
+        top_performer = max(valid_performers, key=lambda x: x["winrate"]) if valid_performers else None
+        worst_performer = min(valid_performers, key=lambda x: x["winrate"]) if valid_performers else None
+        
+        # Regime distribution
+        regimes = {}
+        for t in trades_today:
+            r = t["regime_at_entry"]
+            regimes[r] = regimes.get(r, 0) + 1
+            
+        regime_dist = []
+        for r, count in regimes.items():
+            pct = (count / total_trades) * 100 if total_trades > 0 else 0
+            regime_dist.append(f"{r} {pct:.0f}%")
+        regime_str = ", ".join(regime_dist) if regime_dist else "None"
+        
+        logger.info(f"=== [PoolManager] Daily Specialist Report ({today_str}) ===")
+        logger.info(f"- Total trades: {total_trades}")
+        logger.info(f"- Approved count: {approved_count}")
+        logger.info(f"- New specialist generated: {new_specialists}")
+        logger.info(f"- Eliminated today: {eliminated_today}")
+        logger.info(f"- WARNING status: {warning_count} - {warning_details}")
+        if top_performer:
+            logger.info(f"- Top performer: {top_performer['id'][:8]} (WR {top_performer['winrate']:.0%}, {top_performer['total_trades']} trades)")
+        if worst_performer:
+            logger.info(f"- Worst performer: {worst_performer['id'][:8]} (WR {worst_performer['winrate']:.0%}, {worst_performer['total_trades']} trades)")
+        logger.info(f"- Regime distribution: {regime_str}")
+        logger.info("=========================================================")
+
+    def monitor_decay_warnings(self):
+        """
+        Check WARNING specialists and log their recent 5 trades WR trend.
+        Call this every 5 minutes from a scheduler.
+        """
+        warnings = db.get_specialists_by_status("WARNING")
+        for spec in warnings:
+            spec_id = spec["id"]
+            recent_trades = db.get_recent_trades(spec_id, limit=10)
+            if len(recent_trades) >= 5:
+                recent_5 = recent_trades[:5]
+                wins_5 = sum(1 for t in recent_5 if t["pnl"] > 0)
+                wr_5 = wins_5 / 5.0
+                
+                trend = "STABLE"
+                if len(recent_trades) == 10:
+                    prev_5 = recent_trades[5:10]
+                    wins_prev = sum(1 for t in prev_5 if t["pnl"] > 0)
+                    wr_prev = wins_prev / 5.0
+                    if wr_5 < wr_prev:
+                        trend = "DOWN"
+                    elif wr_5 > wr_prev:
+                        trend = "UP"
+                
+                logger.info(f"[DecayMonitor] {spec_id[:8]}: Last 5 trades WR = {wr_5:.0%}, trend = {trend}")
 
 pool_manager = SpecialistPoolManager()
