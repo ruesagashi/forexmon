@@ -21,6 +21,9 @@ class SpecialistPoolManager:
     def __init__(self):
         # In-memory cache untuk objek Specialist yang sedang di-load (agar tidak perlu load pickle berulang)
         self.loaded_specialists = {}
+        self.last_selected_specialist = None
+        self.trade_counts_per_regime = {}
+        self.last_regime_specialist = {}
 
     def add_specialist(self, specialist: Specialist) -> bool:
         """
@@ -66,35 +69,85 @@ class SpecialistPoolManager:
         Ambil specialist APPROVED terbaik untuk regime saat ini menggunakan algoritma UCB1 (Multi-Armed Bandit).
         Jika tidak ada APPROVED, coba ambil dari PROBATION (highest winrate).
         """
+        if regime_name not in self.trade_counts_per_regime:
+            self.trade_counts_per_regime[regime_name] = 0
+            
+        force_regime_rotation = False
+        if self.trade_counts_per_regime[regime_name] >= 5:
+            force_regime_rotation = True
+            self.trade_counts_per_regime[regime_name] = 0
+            
         # Prioritas 1: APPROVED dengan UCB1
         approved = db.get_specialists_by_regime(regime_name, status="APPROVED", symbol=symbol)
         if approved:
             import math
             # N = total trades dari semua approved di regime ini
             total_N = sum(max(1, spec["total_trades"]) for spec in approved)
-            c = 0.5  # Konstanta UCB1
+            c = 0.15  # Konstanta UCB1 (lebih exploitation, less exploration)
             
-            best_spec = None
-            best_score = -999.0
-            
+            scored_specs = []
             for spec in approved:
                 n_i = max(1, spec["total_trades"])
                 wr_i = spec["winrate"]
                 
+                # 3. Add safety check — jangan pick specialist dengan:
+                if wr_i < 0.40 or n_i < 5:
+                    continue
+                    
+                # 1. Naikin minimum trades sebelum explore aggressif:
+                if n_i < 30:
+                    if wr_i < 0.60:
+                        continue
+                
                 # UCB1 Formula: WR + c * sqrt(ln(N) / n_i)
                 ucb1_score = wr_i + c * math.sqrt(math.log(total_N) / n_i)
+                scored_specs.append((ucb1_score, spec))
                 
-                if ucb1_score > best_score:
-                    best_score = ucb1_score
-                    best_spec = spec
+            # Sort by highest UCB1 score
+            scored_specs.sort(key=lambda x: x[0], reverse=True)
+            
+            best_spec = None
+            best_score = -999.0
+            
+            for score, spec in scored_specs:
+                spec_id = spec["id"]
+                
+                # Cooldown 1: Jangan pick specialist sama 2x berturut secara global
+                if spec_id == self.last_selected_specialist:
+                    continue
                     
+                # Cooldown 2: Rotasi per 5 trade di regime yang sama
+                if force_regime_rotation and spec_id == self.last_regime_specialist.get(regime_name):
+                    continue
+                    
+                best_spec = spec
+                best_score = score
+                break
+                
+            # Fallback: jika semua difilter (misal hanya ada 1 specialist), ambil yang terbaik saja
+            if not best_spec and scored_specs:
+                best_score, best_spec = scored_specs[0]
+                
             if best_spec:
-                return self.get_specialist_object(best_spec["id"])
+                spec_id = best_spec["id"]
+                self.last_selected_specialist = spec_id
+                self.last_regime_specialist[regime_name] = spec_id
+                self.trade_counts_per_regime[regime_name] += 1
+                
+                logger.debug(f"[PoolManager] Selected {spec_id}: UCB={best_score:.3f}, WR={best_spec['winrate']:.1%}, reason=best_ucb1")
+                return self.get_specialist_object(spec_id)
             
         # Prioritas 2: PROBATION (Explore Murni)
         probation = db.get_specialists_by_regime(regime_name, status="PROBATION", symbol=symbol)
         if probation:
-            best_id = max(probation, key=lambda x: x["winrate"])["id"]
+            best_spec = max(probation, key=lambda x: x["winrate"])
+            best_id = best_spec["id"]
+            
+            self.last_selected_specialist = best_id
+            self.last_regime_specialist[regime_name] = best_id
+            self.trade_counts_per_regime[regime_name] += 1
+            
+            logger.debug(f"[PoolManager] Selected {best_id}: UCB=0.000, WR={best_spec['winrate']:.1%}, reason=best_probation")
             return self.get_specialist_object(best_id)
             
         return None
@@ -205,5 +258,25 @@ class SpecialistPoolManager:
             elif recent_wr < 0.60:
                 db.update_specialist_status(specialist_id, "SUSPENDED")
                 logger.error(f"[PoolManager] {specialist_id} SUSPENDED: WR drop ke {recent_wr:.1%}")
+
+    def generate_daily_report(self):
+        """
+        Setiap pagi print:
+        - Specialist yang paling banyak dipakai hari ini
+        - Win rate masing-masing
+        - Apakah ada yang bias (> 40% dari total trade)
+        """
+        # Dalam implementasi nyata, ini butuh DB query trade hari ini.
+        # Simulasi log report:
+        from datetime import datetime, timedelta
+        
+        # Contoh jika ada fungsi di DB untuk mengambil trade 24 jam terakhir
+        # trades_today = db.get_trades_since(datetime.now() - timedelta(days=1))
+        # Karena db belum tentu punya ini, kita log kerangkanya:
+        
+        logger.info("=== DAILY SPECIALIST USAGE REPORT ===")
+        # Logic to aggregate usage goes here when db supports it
+        logger.info("Report structure ready. Waiting for DB integration for daily trade querying.")
+        logger.info("=====================================")
 
 pool_manager = SpecialistPoolManager()
