@@ -177,6 +177,13 @@ class SpecialistPoolManager:
         wins = sum(1 for t in trades if t["pnl"] > 0)
         recent_wr = wins / len(trades) if trades else 0.0
         
+        # 4. Auto-ELIMINATE for WR < 45% and total trades >= 10
+        overall_wr = spec["winrate"]
+        if total_trades >= 10 and overall_wr < 0.45:
+            db.update_specialist_status(specialist_id, "ELIMINATED", reason=f"Auto-ELIMINATED: WR {overall_wr:.1%} < 45% and trades >= 10")
+            logger.error(f"[Fast-Kill] {specialist_id} Auto-ELIMINATED: WR {overall_wr:.1%} < 45% with {total_trades} trades")
+            return
+        
         # 1. Evaluasi Stage 2: PROBATION -> APPROVED / ELIMINATED
         if status == "PROBATION":
             self._evaluate_probation(specialist_id, total_trades, trades)
@@ -204,10 +211,10 @@ class SpecialistPoolManager:
                 telegram_alerter.send_alert(f"💀 <b>SPECIALIST KILLED</b>\nID: {specialist_id}\nReason: 3 consecutive initial losses.")
                 return
             
-        # Trade ke-5: WR < 40%
-        if 5 <= total_trades < 10 and wr < 0.40:
+        # Trade ke-5: WR < 35% (Stricter threshold)
+        if 5 <= total_trades < 10 and wr < 0.35:
             db.update_specialist_status(specialist_id, "ELIMINATED")
-            logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 40% di trade 5.")
+            logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: WR {wr:.1%} < 35% di trade 5.")
             return
             
         # Trade ke-10: WR < 50%
@@ -252,6 +259,11 @@ class SpecialistPoolManager:
                 if overall_wr - recent_10_wr > 0.15:
                     db.update_specialist_status(specialist_id, "WARNING", reason="WR degradation detected")
                     logger.warning(f"[PoolManager] {specialist_id} WR degradation detected: Overall {overall_wr:.1%} vs Recent 10 {recent_10_wr:.1%}")
+                    current_status = "WARNING"
+                elif recent_10_wr < 0.55:
+                    # 3. Add APPROVED threshold ketat
+                    db.update_specialist_status(specialist_id, "WARNING", reason="Approved specialist underperforming: WR < 55% in recent 10")
+                    logger.warning(f"[PoolManager] {specialist_id} Approved specialist underperforming: WR {recent_10_wr:.1%} < requirement")
                     current_status = "WARNING"
             
             elif current_status == "WARNING":
