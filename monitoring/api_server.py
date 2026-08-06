@@ -123,13 +123,11 @@ def get_specialists():
         SELECT id, regime_type, status, winrate, profit_factor, total_trades,
                created_at
         FROM specialists
-        WHERE status IN ('APPROVED', 'PROBATION', 'WARNING', 'SUSPENDED')
+        WHERE status IN ('APPROVED', 'PROBATION')
         ORDER BY 
             CASE status 
                 WHEN 'APPROVED' THEN 1 
-                WHEN 'WARNING' THEN 2
-                WHEN 'PROBATION' THEN 3 
-                WHEN 'SUSPENDED' THEN 4 
+                WHEN 'PROBATION' THEN 2 
             END,
             winrate DESC
         LIMIT 50
