@@ -41,6 +41,8 @@ def run_live():
     db.log_event("SYSTEM_START", "Live trading engine started.")
     
     try:
+        from core.pool_manager import pool_manager
+        pool_manager.retroactive_re_evaluate_all()
         scheduler.start()
     except KeyboardInterrupt:
         logger.info("Dihentikan oleh user.")

@@ -384,4 +384,30 @@ class SpecialistPoolManager:
                 
                 logger.info(f"[DecayMonitor] {spec_id[:8]}: Last 5 trades WR = {wr_5:.0%}, trend = {trend}")
 
+    def retroactive_re_evaluate_all(self):
+        """Re-evaluate semua specialist dengan threshold baru"""
+        all_specs = db.get_specialists_by_status("APPROVED")
+        from config.settings import settings
+        
+        for spec in all_specs:
+            wr = spec.get('winrate', 0.0)
+            pf = spec.get('profit_factor', 0.0)
+            
+            # Apply threshold baru
+            if wr < settings.MIN_BACKTEST_WR:  # 0.72
+                db.update_specialist_status(
+                    spec['id'], 
+                    'SUSPENDED',
+                    reason=f"Retroactive eval: WR {wr:.1%} < {settings.MIN_BACKTEST_WR:.1%}"
+                )
+                logger.warning(f"✗ {spec['id']}: Downgrade APPROVED→SUSPENDED (WR {wr:.1%})")
+                
+            elif pf < settings.MIN_PROFIT_FACTOR:  # 2.0
+                db.update_specialist_status(
+                    spec['id'],
+                    'SUSPENDED',
+                    reason=f"Retroactive eval: PF {pf:.2f} < {settings.MIN_PROFIT_FACTOR:.2f}"
+                )
+                logger.warning(f"✗ {spec['id']}: Downgrade APPROVED→SUSPENDED (PF {pf:.2f})")
+
 pool_manager = SpecialistPoolManager()
