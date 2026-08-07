@@ -78,9 +78,16 @@ class BacktestEngine:
             if is_buy:
                 sl = entry_price - (atr * sl_mult)
                 tp = entry_price + (atr * tp_mult)
+                if not (sl < entry_price < tp):
+                    logger.error(f"[Backtest] SL/TP error for BUY: SL={sl}, Entry={entry_price}, TP={tp}, ATR={atr}")
             else:
                 sl = entry_price + (atr * sl_mult)
                 tp = entry_price - (atr * tp_mult)
+                if not (tp < entry_price < sl):
+                    logger.error(f"[Backtest] SL/TP error for SELL: SL={sl}, Entry={entry_price}, TP={tp}, ATR={atr}")
+                    
+            if sl == tp:
+                logger.error(f"[Backtest] SL == TP ({sl}). ATR is likely 0 or missing.")
                 
             # Simulate forward to see if hit SL or TP first
             result = 0  # 0: hold/timeout, 1: win, -1: loss

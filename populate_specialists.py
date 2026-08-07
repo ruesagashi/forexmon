@@ -29,8 +29,8 @@ def main():
     import random
     
     for symbol in settings.SYMBOLS:
-        logger.info(f"Mengambil 50000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
-        df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=50000)
+        logger.info(f"Mengambil 100000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
+        df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=100000)
         if df_raw is None or df_raw.empty:
             logger.error(f"Gagal ambil data {symbol}.")
             continue
