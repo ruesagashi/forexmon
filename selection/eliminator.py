@@ -52,8 +52,15 @@ class BacktestEngine:
         """
         # Get features
         features = self.df[self.specialist.feature_cols]
-        # Predict actions (0: HOLD, 1: BUY, 2: SELL)
-        predictions = self.specialist.model.predict(features)
+        # Predict probabilities
+        probas = self.specialist.model.predict_proba(features)
+        
+        predictions = np.zeros(len(features), dtype=int)
+        for idx in range(len(features)):
+            pred_class = int(np.argmax(probas[idx]))
+            confidence = float(probas[idx][pred_class])
+            if pred_class != 0 and confidence >= 0.45:
+                predictions[idx] = pred_class
         
         opens = self.df['open'].values
         highs = self.df['high'].values

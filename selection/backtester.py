@@ -22,7 +22,13 @@ def backtest_specialist_on_history(specialist: Specialist, df_history: pd.DataFr
     logger.info(f"[Backtester] Menjalankan backtest untuk Specialist {specialist.id} ({specialist.symbol})...")
     
     # Hitung features
+    from models.regime_detector import label_regime_manual
     df_f = get_features(df_history.copy()).dropna()
+    df_f["regime"] = label_regime_manual(df_f)
+    
+    # Filter dataset hanya untuk regime specialist ini (seperti saat training!)
+    df_f = df_f[df_f["regime"] == specialist.regime.value].copy()
+
     if len(df_f) < 100:
         logger.warning(f"[Backtester] Data history (setelah features) terlalu sedikit untuk {specialist.id}")
         return {"winrate": 0.0, "profit_factor": 0.0, "total_trades": 0, "max_drawdown": 0.0}
