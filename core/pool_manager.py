@@ -164,37 +164,6 @@ class SpecialistPoolManager:
         status = spec["status"]
         if status in ["ELIMINATED", "SUSPENDED"]:
             return  # Tidak perlu evaluasi jika sudah mati/suspend
-
-        # Ambil trade history
-        trades = db.get_recent_trades(specialist_id, limit=20)
-        
-        if not trades:
-            return
-        # Urutkan dari terlama ke terbaru dalam sample ini
-        trades.reverse()
-        
-        total_trades = spec["total_trades"]  # Total keseluruhan
-        wins = sum(1 for t in trades if t["pnl"] > 0)
-        recent_wr = wins / len(trades) if trades else 0.0
-        
-        # 4. Auto-ELIMINATE for WR < 45% and total trades >= 10
-        overall_wr = spec["winrate"]
-        if total_trades >= 10 and overall_wr < 0.45:
-            db.update_specialist_status(specialist_id, "ELIMINATED", reason=f"Auto-ELIMINATED: WR {overall_wr:.1%} < 45% and trades >= 10")
-            logger.error(f"[Fast-Kill] {specialist_id} Auto-ELIMINATED: WR {overall_wr:.1%} < 45% with {total_trades} trades")
-            return
-        
-        # 1. Evaluasi Stage 2: PROBATION -> APPROVED / ELIMINATED
-        if status == "PROBATION":
-            self._evaluate_probation(specialist_id, total_trades, trades)
-            
-        # 2. Evaluasi Stage 3: APPROVED -> WARNING / SUSPENDED
-        elif status in ["APPROVED", "WARNING"]:
-            self._evaluate_approved(spec, trades, recent_wr)
-
-    def _evaluate_probation(self, specialist_id: str, total_trades: int, trades: list):
-        """Evaluasi Stage 2 Fast-Kill"""
-        if total_trades < 3:
             return
             
         wins = sum(1 for t in trades if t["pnl"] > 0)
@@ -394,6 +363,18 @@ class SpecialistPoolManager:
             
         wins = sum(1 for t in trades if t["pnl"] > 0)
         wr = wins / len(trades)
+        
+        # Hitung Profit Factor dari trades ini
+        gross_profit = sum(t["pnl"] for t in trades if t["pnl"] > 0)
+        gross_loss = abs(sum(t["pnl"] for t in trades if t["pnl"] <= 0))
+        pf = gross_profit / gross_loss if gross_loss > 0 else 99.0
+        
+        # Safety Check (Override Eliminasi)
+        if wr > 0.75 or pf > 1.5:
+            if total_trades >= 20:
+                db.update_specialist_status(specialist_id, "APPROVED")
+                logger.success(f"[Fast-Kill] {specialist_id} LULUS PROBATION! (Safety net: WR {wr:.1%} / PF {pf:.2f})")
+            return
         
         # Trade ke-1 s/d 3: Loss semua 3 berturut-turut
         if 3 <= total_trades < 5 and wins == 0:
