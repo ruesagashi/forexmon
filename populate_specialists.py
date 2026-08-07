@@ -28,6 +28,8 @@ def main():
     from selection.eliminator import run_pre_filter
     import random
     
+    generated_count = 0
+    
     for symbol in settings.SYMBOLS:
         logger.info(f"Mengambil 20000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
         df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=20000)
@@ -72,6 +74,7 @@ def main():
                         if is_passed:
                             spec.status = "PROBATION"
                             pool_manager.add_specialist(spec)
+                            generated_count += 1
                             logger.success(f"Specialist {spec.id} ({symbol}) ditambahkan ke Pool!")
                         else:
                             logger.warning(f"Specialist {spec.id} ({symbol}) gagal Pre-Filter (MC/Backtest).")
@@ -81,7 +84,11 @@ def main():
                     logger.error(f"Error train specialist: {e}")
 
     connector.shutdown()
-    logger.success("Inisialisasi Pool Selesai. Siap untuk Live Trading Phase 8!")
+    
+    if generated_count == 0:
+        logger.error("EMERGENCY FALLBACK: 0 specialists generated! Check backtest logs. Old specialists are kept in DB for manual review.")
+    else:
+        logger.success(f"Inisialisasi Pool Selesai. {generated_count} specialists berhasil ditambahkan. Siap untuk Live Trading Phase 8!")
 
 if __name__ == "__main__":
     main()
