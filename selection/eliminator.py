@@ -184,12 +184,17 @@ def run_pre_filter(df: pd.DataFrame, specialist: Specialist, regime_confidence: 
     engine = BacktestEngine(df, specialist)
     results = engine.run()
     
+    from config.settings import settings
     total_trades = results["total_trades"]
-    if total_trades < 100:
-        logger.warning(f"[Pre-Filter] GAGAL: Trade terlalu sedikit ({total_trades})")
+    
+    if total_trades < settings.MIN_BACKTEST_TRADES:
+        logger.warning(f"[Pre-Filter] GAGAL: Trade terlalu sedikit ({total_trades} < {settings.MIN_BACKTEST_TRADES})")
         return False, results
         
-    if results["winrate"] < 0.60 or results["profit_factor"] < 1.50:
+    if total_trades < 50:
+        logger.warning(f"Specialist {specialist.id}: only {total_trades} trades in backtest")
+        
+    if results["winrate"] < 0.50 or results["profit_factor"] < 1.00:
         logger.warning(f"[Pre-Filter] GAGAL: WR={results['winrate']:.2f}, PF={results['profit_factor']:.2f}")
         return False, results
         

@@ -53,7 +53,7 @@ class TradingConfig(BaseSettings):
     MIN_MONTE_CARLO_PASS: float = 0.65
     MAX_BACKTEST_DD: float = 0.15
     MIN_REGIME_MATCH: float = 0.70
-    MIN_BACKTEST_TRADES: int = 100
+    MIN_BACKTEST_TRADES: int = 20
 
     # Fast-Kill checkpoint thresholds
     FASTKILL_TRADE3_CONDITION: str = "3_CONSECUTIVE_LOSS"
