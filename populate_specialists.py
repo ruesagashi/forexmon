@@ -5,12 +5,44 @@ Dijalankan sebelum memulai Phase 8 (Paper Trading) agar database tidak kosong.
 """
 
 import sys
+import time
+import pandas as pd
 from pathlib import Path
 from loguru import logger
 
 # Setup logging ke console
 logger.remove()
 logger.add(sys.stdout, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>", level="INFO")
+
+def get_candles_batch(symbol, timeframe, count=100000, batch_size=5000):
+    """Download candles dalam batch kecil"""
+    from execution.mt5_connector import connector
+    all_candles = []
+    offset = 0
+    
+    while offset < count:
+        batch_count = min(batch_size, count - offset)
+        logger.info(f"Downloading batch: {offset} - {offset + batch_count}")
+        
+        try:
+            batch = connector.get_candles(
+                symbol, timeframe, count=batch_count, skip=offset
+            )
+            if batch is None or batch.empty:
+                break
+            
+            all_candles.append(batch)
+            offset += batch_count
+            time.sleep(1)  # Rate limit
+        except Exception as e:
+            logger.error(f"Batch download failed: {e}")
+            break
+    
+    if all_candles:
+        df = pd.concat(all_candles)
+        df = df[~df.index.duplicated(keep='last')].sort_index()
+        return df
+    return None
 
 def main():
     logger.info("Memulai inisialisasi awal Specialist Pool...")
@@ -30,7 +62,7 @@ def main():
     
     for symbol in settings.SYMBOLS:
         logger.info(f"Mengambil 100000 candle {symbol} {settings.PRIMARY_TF} dari MT5...")
-        df_raw = connector.get_candles(symbol, settings.PRIMARY_TF, count=100000)
+        df_raw = get_candles_batch(symbol, settings.PRIMARY_TF, count=100000)
         if df_raw is None or df_raw.empty:
             logger.error(f"Gagal ambil data {symbol}.")
             continue

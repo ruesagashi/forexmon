@@ -119,6 +119,7 @@ class MT5Connector:
         symbol: str,
         timeframe: str,
         count: int = 500,
+        skip: int = 0
     ) -> Optional[pd.DataFrame]:
         """
         Ambil data candle OHLCV dari MT5.
@@ -127,6 +128,7 @@ class MT5Connector:
             symbol: Nama symbol (contoh: 'XAUUSD')
             timeframe: String timeframe (contoh: 'H1', 'M15')
             count: Jumlah candle yang diambil
+            skip: Offset dari candle terakhir
 
         Returns:
             DataFrame dengan kolom: time, open, high, low, close, tick_volume, spread, real_volume
@@ -144,7 +146,7 @@ class MT5Connector:
             logger.error(f"[MT5] Symbol '{symbol}' tidak tersedia di terminal.")
             return None
 
-        rates = mt5.copy_rates_from_pos(symbol, TF_MAP[timeframe], 0, count)
+        rates = mt5.copy_rates_from_pos(symbol, TF_MAP[timeframe], skip, count)
 
         if rates is None or len(rates) == 0:
             error = mt5.last_error()
