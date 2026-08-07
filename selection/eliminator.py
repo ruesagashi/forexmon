@@ -187,6 +187,18 @@ def run_pre_filter(df: pd.DataFrame, specialist: Specialist, regime_confidence: 
     from config.settings import settings
     total_trades = results["total_trades"]
     
+    logger.info(f"Backtest trades generated: {total_trades}")
+    logger.info(f"Feature count used: {len(specialist.feature_cols)}")
+    logger.info(f"SL_ATR_MULT: {settings.SL_ATR_MULT}, TP_ATR_MULT: {settings.TP_ATR_MULT}")
+    
+    if total_trades == 0:
+        logger.error(f"Specialist {specialist.id}: 0 trades in backtest!")
+        return False, results
+        
+    if total_trades < 10:
+        logger.warning(f"Specialist {specialist.id}: only {total_trades} trades - suspicious!")
+        return False, results
+    
     if total_trades < settings.MIN_BACKTEST_TRADES:
         logger.warning(f"[Pre-Filter] GAGAL: Trade terlalu sedikit ({total_trades} < {settings.MIN_BACKTEST_TRADES})")
         return False, results
