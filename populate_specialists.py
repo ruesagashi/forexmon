@@ -23,15 +23,15 @@ def after_populate_check():
             db.update_specialist_status(spec['id'], 'ELIMINATED', reason='0% WR')
             logger.info(f"Specialist {spec['id']} dieliminasi (0% WR).")
         
-        # WARNING for artificial high WR
+        # PROBATION for artificial high WR
         elif spec['winrate'] == 1.0 and spec['total_trades'] < 10:
-            db.update_specialist_status(spec['id'], 'WARNING', reason='100% WR, insufficient sample')
-            logger.info(f"Specialist {spec['id']} diberi WARNING (100% WR, artificial).")
+            db.update_specialist_status(spec['id'], 'PROBATION', reason='100% WR, insufficient sample')
+            logger.info(f"Specialist {spec['id']} dikembalikan ke PROBATION (100% WR, artificial).")
         
-        # SUSPEND low sample + low WR
-        elif spec['total_trades'] < 20 and spec['winrate'] < 0.55:
-            db.update_specialist_status(spec['id'], 'SUSPENDED', reason='Insufficient sample + low WR')
-            logger.info(f"Specialist {spec['id']} disuspend (Low sample + low WR).")
+        # SUSPEND low sample + very low WR
+        elif 5 <= spec['total_trades'] < 20 and spec['winrate'] < 0.40:
+            db.update_specialist_status(spec['id'], 'SUSPENDED', reason='Insufficient sample + very low WR')
+            logger.info(f"Specialist {spec['id']} disuspend (Low sample + very low WR).")
 
 def main():
     logger.info("Memulai inisialisasi awal Specialist Pool...")
