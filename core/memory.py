@@ -186,6 +186,12 @@ class MemoryDB:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_all_specialists(self) -> list[dict]:
+        """Ambil semua specialist."""
+        conn = self._get_conn()
+        rows = conn.execute("SELECT * FROM specialists").fetchall()
+        return [dict(r) for r in rows]
+
     def get_specialists_by_status(self, status: str) -> list[dict]:
         """Ambil semua specialist dengan status tertentu."""
         conn = self._get_conn()

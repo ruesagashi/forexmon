@@ -12,6 +12,27 @@ from loguru import logger
 logger.remove()
 logger.add(sys.stdout, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>", level="INFO")
 
+def after_populate_check():
+    from core.memory import db
+    logger.info("Menjalankan auto-cleanup artificial specialists...")
+    all_specs = db.get_all_specialists()
+    
+    for spec in all_specs:
+        # ELIMINATE obvious failures
+        if spec['winrate'] == 0 and spec['total_trades'] >= 1:
+            db.update_specialist_status(spec['id'], 'ELIMINATED', reason='0% WR')
+            logger.info(f"Specialist {spec['id']} dieliminasi (0% WR).")
+        
+        # WARNING for artificial high WR
+        elif spec['winrate'] == 1.0 and spec['total_trades'] < 10:
+            db.update_specialist_status(spec['id'], 'WARNING', reason='100% WR, insufficient sample')
+            logger.info(f"Specialist {spec['id']} diberi WARNING (100% WR, artificial).")
+        
+        # SUSPEND low sample + low WR
+        elif spec['total_trades'] < 20 and spec['winrate'] < 0.55:
+            db.update_specialist_status(spec['id'], 'SUSPENDED', reason='Insufficient sample + low WR')
+            logger.info(f"Specialist {spec['id']} disuspend (Low sample + low WR).")
+
 def main():
     logger.info("Memulai inisialisasi awal Specialist Pool...")
     
@@ -89,6 +110,8 @@ def main():
                     logger.error(f"Error train specialist: {e}")
 
     connector.shutdown()
+    
+    after_populate_check()
     
     if generated_count == 0:
         logger.error("EMERGENCY FALLBACK: 0 specialists generated! Check backtest logs. Old specialists are kept in DB for manual review.")
