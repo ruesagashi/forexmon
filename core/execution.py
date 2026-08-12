@@ -86,6 +86,18 @@ class ExecutionEngine:
             logger.warning(f"[Execution] Tidak ada slot MT5 tersisa untuk status {specialist.status}.")
             return
 
+        # Validation: Check for counter mismatch
+        spec_db = pool_manager.db.get_specialist(specialist.id) if hasattr(pool_manager, 'db') else None
+        if not spec_db:
+            from core.memory import db
+            spec_db = db.get_specialist(specialist.id)
+            
+        if spec_db and spec_db.get('total_trades', 0) == 0:
+            from core.memory import db
+            live_trades = db.get_specialist_trades(specialist.id)
+            if len(live_trades) > 0:
+                logger.error("Counter mismatch detected!")
+
         # 7. Eksekusi Order
         self._execute_trade(symbol, timeframe, specialist, signal, df.iloc[-1])
 

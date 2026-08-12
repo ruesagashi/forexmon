@@ -73,6 +73,11 @@ def main():
                         
                         if is_passed:
                             spec.status = "PROBATION"
+                            # Reset counter untuk live trading
+                            spec.trades_count = 0
+                            spec.win_rate = 0.0
+                            spec.profit_factor = 0.0
+                            
                             pool_manager.add_specialist(spec)
                             generated_count += 1
                             logger.success(f"Specialist {spec.id} ({symbol}) ditambahkan ke Pool!")

@@ -23,6 +23,7 @@ class Scheduler:
         
         self.last_populate_check = datetime.now()
         self.populate_interval_hours = 24
+        self.last_decay_check = datetime.now()
 
     def start(self):
         """Memulai infinite loop live trading."""
@@ -100,12 +101,30 @@ class Scheduler:
                 
                 # Update metrics dan trigger evaluasi
                 db.update_specialist_metrics(trade['specialist_id'])
+                
+                # Sync object in memory: INCREMENT counter & recalculate winrate
+                spec_obj = pool_manager.get_specialist_object(trade['specialist_id'])
+                if spec_obj:
+                    spec_db = db.get_specialist(trade['specialist_id'])
+                    if spec_db:
+                        spec_obj.trades_count = spec_db['total_trades']
+                        spec_obj.win_rate = spec_db['winrate']
+                        spec_obj.profit_factor = spec_db['profit_factor']
+                        
                 pool_manager.evaluate_fast_kill(trade['specialist_id'])
 
     def _run_cycle(self):
         """Mengecek apakah ada candle baru untuk setiap symbol."""
         if not connector.ensure_connected():
             return
+            
+        if (datetime.now() - self.last_decay_check).total_seconds() > 300:
+            try:
+                from core.pool_manager import pool_manager
+                pool_manager.monitor_decay_warnings()
+            except Exception as e:
+                logger.error(f"[Scheduler] Error on monitor_decay_warnings: {e}")
+            self.last_decay_check = datetime.now()
             
         if (datetime.now() - self.last_populate_check).total_seconds() > self.populate_interval_hours * 3600:
             self.check_and_repopulate_if_needed()
