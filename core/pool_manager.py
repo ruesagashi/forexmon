@@ -182,15 +182,19 @@ class SpecialistPoolManager:
         status = spec["status"]
         if status in ["ELIMINATED", "SUSPENDED"]:
             return  # Tidak perlu evaluasi jika sudah mati/suspend
+            
+        trades = db.get_specialist_trades(specialist_id)
+        if not trades:
             return
             
-        wins = sum(1 for t in trades if t["pnl"] > 0)
-        wr = wins / len(trades)
+        total_trades = len(trades)
+        wins = sum(1 for t in trades if t["result"] == "WIN")
+        wr = wins / total_trades if total_trades > 0 else 0.0
         
         # Trade ke-1 s/d 3: Loss semua 3 berturut-turut
         if 3 <= total_trades < 5 and wins == 0:
             # Check if last 3 trades are losses
-            last_3_wins = sum(1 for t in trades[-3:] if t["pnl"] > 0)
+            last_3_wins = sum(1 for t in trades[:3] if t["result"] == "WIN")
             if last_3_wins == 0:
                 db.update_specialist_status(specialist_id, "ELIMINATED")
                 logger.warning(f"[Fast-Kill] {specialist_id} ELIMINATED: 3 loss beruntun awal.")
