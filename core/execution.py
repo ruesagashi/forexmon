@@ -77,22 +77,22 @@ class ExecutionEngine:
         current_row = df.iloc[-1:]
         signal, confidence = specialist.predict(current_row)
         
-        logger.debug(f"[Execution] Specialist predict: action={signal}, confidence={confidence}")
+        logger.info(f"[Execution] Specialist predict: action={signal}, confidence={confidence}")
         
         if signal == 1:
-            logger.debug(f"[Execution] Action is BUY (1), confidence {confidence} >= 0.45?")
+            logger.info(f"[Execution] Action is BUY (1), confidence {confidence} >= 0.45?")
             if confidence >= 0.45:
-                logger.debug(f"[Execution] EXECUTE BUY")
+                logger.info(f"[Execution] EXECUTE BUY")
             else:
-                logger.debug(f"[Execution] HOLD - confidence too low")
+                logger.info(f"[Execution] HOLD - confidence too low")
         elif signal == -1:
-            logger.debug(f"[Execution] Action is SELL (-1), confidence {confidence} >= 0.45?")
+            logger.info(f"[Execution] Action is SELL (-1), confidence {confidence} >= 0.45?")
             if confidence >= 0.45:
-                logger.debug(f"[Execution] EXECUTE SELL")
+                logger.info(f"[Execution] EXECUTE SELL")
             else:
-                logger.debug(f"[Execution] HOLD - confidence too low")
+                logger.info(f"[Execution] HOLD - confidence too low")
         elif signal == 0:
-            logger.debug(f"[Execution] Action is HOLD (0), confidence {confidence}")
+            logger.info(f"[Execution] Action is HOLD (0), confidence {confidence}")
             
         if signal == 0:
             logger.info(f"[Execution] Specialist {specialist.id} ({regime}) memutuskan HOLD.")
