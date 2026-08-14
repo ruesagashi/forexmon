@@ -91,12 +91,12 @@ class SpecialistPoolManager:
                 wr_i = spec["winrate"]
                 
                 # 3. Add safety check — jangan pick specialist dengan:
-                if wr_i < 0.40 or n_i < 5:
+                if wr_i < 0.30 or n_i < 5:
                     continue
                     
                 # 1. Naikin minimum trades sebelum explore aggressif:
                 if n_i < 30:
-                    if wr_i < 0.60:
+                    if wr_i < 0.40:
                         continue
                 
                 # UCB1 Formula: WR + c * sqrt(ln(N) / n_i)
