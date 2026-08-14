@@ -96,14 +96,13 @@ class SpecialistPoolManager:
                 n_i = max(1, spec["total_trades"])
                 wr_i = spec["winrate"]
                 
-                # 3. Add safety check — jangan pick specialist dengan:
-                if wr_i < 0.30 or n_i < 5:
+                # 3. Add safety check — jangan pick specialist dengan winrate sangat buruk (jika sudah cukup trade)
+                if n_i >= 5 and wr_i < 0.30:
                     continue
                     
                 # 1. Naikin minimum trades sebelum explore aggressif:
-                if n_i < 30:
-                    if wr_i < 0.40:
-                        continue
+                if 5 <= n_i < 30 and wr_i < 0.40:
+                    continue
                 
                 # UCB1 Formula: WR + c * sqrt(ln(N) / n_i)
                 ucb1_score = wr_i + c * math.sqrt(math.log(total_N) / n_i)
@@ -112,6 +111,8 @@ class SpecialistPoolManager:
             logger.debug(f"[PoolManager] After filtering: {len(scored_specs)} specialists")
                 
             # Sort by highest UCB1 score
+            logger.info(f"[DEBUG] scored_specs len: {len(scored_specs)}")
+            
             scored_specs.sort(key=lambda x: x[0], reverse=True)
             
             best_spec = None
@@ -122,10 +123,12 @@ class SpecialistPoolManager:
                 
                 # Cooldown 1: Jangan pick specialist sama 2x berturut secara global
                 if spec_id == self.last_selected_specialist:
+                    logger.info(f"[DEBUG] Skipping {spec_id} because of Cooldown 1")
                     continue
                     
                 # Cooldown 2: Rotasi per 5 trade di regime yang sama
                 if force_regime_rotation and spec_id == self.last_regime_specialist.get(regime_str):
+                    logger.info(f"[DEBUG] Skipping {spec_id} because of Cooldown 2")
                     continue
                     
                 best_spec = spec
@@ -133,8 +136,10 @@ class SpecialistPoolManager:
                 break
                 
             # Fallback: jika semua difilter (misal hanya ada 1 specialist), ambil yang terbaik saja
+            logger.info(f"[DEBUG] Before fallback, best_spec is None? {best_spec is None}")
             if not best_spec and scored_specs:
                 best_score, best_spec = scored_specs[0]
+                logger.info(f"[DEBUG] Fallback applied. best_spec is now: {best_spec['id']}")
                 
             if best_spec:
                 spec_id = best_spec["id"]
@@ -143,9 +148,11 @@ class SpecialistPoolManager:
                 self.trade_counts_per_regime[regime_str] += 1
                 
                 logger.debug(f"[PoolManager] Selected: {spec_id} (WR={best_spec['winrate']:.1%})")
-                return self.get_specialist_object(spec_id)
+                obj = self.get_specialist_object(spec_id)
+                logger.info(f"[DEBUG] get_specialist_object({spec_id}) returned: {obj}")
+                return obj
             else:
-                logger.error(f"[PoolManager] NO SPECIALIST FOUND for {regime_str}!")
+                logger.error(f"[PoolManager] NO SPECIALIST FOUND for {regime_str}! This shouldn't happen if approved has elements.")
             
         # Prioritas 2: PROBATION (Explore Murni)
         probation = db.get_specialists_by_regime(regime_str, status="PROBATION", symbol=symbol)
