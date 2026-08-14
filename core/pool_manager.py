@@ -69,6 +69,7 @@ class SpecialistPoolManager:
         Ambil specialist APPROVED terbaik untuk regime saat ini menggunakan algoritma UCB1 (Multi-Armed Bandit).
         Jika tidak ada APPROVED, coba ambil dari PROBATION (highest winrate).
         """
+        logger.debug(f"[PoolManager] Looking for {regime_name} specialist...")
         if regime_name not in self.trade_counts_per_regime:
             self.trade_counts_per_regime[regime_name] = 0
             
@@ -79,6 +80,7 @@ class SpecialistPoolManager:
             
         # Prioritas 1: APPROVED dengan UCB1
         approved = db.get_specialists_by_regime(regime_name, status="APPROVED", symbol=symbol)
+        logger.debug(f"[PoolManager] Found {len(approved) if approved else 0} candidates")
         if approved:
             import math
             # N = total trades dari semua approved di regime ini
@@ -102,6 +104,8 @@ class SpecialistPoolManager:
                 # UCB1 Formula: WR + c * sqrt(ln(N) / n_i)
                 ucb1_score = wr_i + c * math.sqrt(math.log(total_N) / n_i)
                 scored_specs.append((ucb1_score, spec))
+                
+            logger.debug(f"[PoolManager] After filtering: {len(scored_specs)} specialists")
                 
             # Sort by highest UCB1 score
             scored_specs.sort(key=lambda x: x[0], reverse=True)
@@ -134,8 +138,10 @@ class SpecialistPoolManager:
                 self.last_regime_specialist[regime_name] = spec_id
                 self.trade_counts_per_regime[regime_name] += 1
                 
-                logger.debug(f"[PoolManager] Selected {spec_id}: UCB={best_score:.3f}, WR={best_spec['winrate']:.1%}, reason=best_ucb1")
+                logger.debug(f"[PoolManager] Selected: {spec_id} (WR={best_spec['winrate']:.1%})")
                 return self.get_specialist_object(spec_id)
+            else:
+                logger.error(f"[PoolManager] NO SPECIALIST FOUND for {regime_name}!")
             
         # Prioritas 2: PROBATION (Explore Murni)
         probation = db.get_specialists_by_regime(regime_name, status="PROBATION", symbol=symbol)
@@ -147,9 +153,10 @@ class SpecialistPoolManager:
             self.last_regime_specialist[regime_name] = best_id
             self.trade_counts_per_regime[regime_name] += 1
             
-            logger.debug(f"[PoolManager] Selected {best_id}: UCB=0.000, WR={best_spec['winrate']:.1%}, reason=best_probation")
+            logger.debug(f"[PoolManager] Selected: {best_id} (WR={best_spec['winrate']:.1%})")
             return self.get_specialist_object(best_id)
             
+        logger.error(f"[PoolManager] NO SPECIALIST FOUND for {regime_name}!")
         return None
 
     def evaluate_fast_kill(self, specialist_id: str):
