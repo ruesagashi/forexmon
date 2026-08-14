@@ -202,17 +202,21 @@ class MemoryDB:
 
     def get_specialists_by_regime(self, regime_type: str, status: str = "APPROVED", symbol: str = None) -> list[dict]:
         """Ambil specialist APPROVED untuk regime tertentu."""
+        logger.debug(f"[Memory] Query: regime={regime_type}, status={status}, symbol={symbol}")
         conn = self._get_conn()
         
         query = "SELECT * FROM specialists WHERE regime_type = ? AND status = ?"
-        params = [regime_type, status]
+        rows = conn.execute(query, (regime_type, status)).fetchall()
+        result = [dict(r) for r in rows]
+        
+        logger.debug(f"[Memory] Found {len(result)} for regime and status")
         
         if symbol is not None:
-            query += " AND symbol = ?"
-            params.append(symbol)
+            filtered = [r for r in result if r['symbol'] == symbol]
+            logger.debug(f"[Memory] After symbol filter: {len(filtered)}")
+            return filtered
             
-        rows = conn.execute(query, tuple(params)).fetchall()
-        return [dict(r) for r in rows]
+        return result
 
     def count_specialists(self, status: str, regime_type: str = None) -> int:
         """Menghitung jumlah specialist dengan status dan regime tertentu."""
